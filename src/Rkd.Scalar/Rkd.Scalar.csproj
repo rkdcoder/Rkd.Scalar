@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar NuGet</Product>
