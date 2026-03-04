@@ -21,7 +21,7 @@ The goal is to allow any ASP.NET project to configure complete documentation in 
 - **Zero Boilerplate:** Reduce 50+ lines of configuration to just 5.
 - **UI Protection:** [Key Feature] Protect your documentation page with a password (Basic Auth) without complicating your middleware pipeline.
 - **JWT & Basic Auth:** Integrated and simplified security configuration for testing and internal services.
-- **Automatic Versioning:** Native integration with `Asp.Versioning`. Your versioned controllers appear automatically in the docs.
+- **Versioning:** Native integration with `Asp.Versioning`.
 - **Modern UI:** Uses [Scalar](https://scalar.com/) (the modern replacement for Swagger UI).
 
 ---
@@ -68,7 +68,7 @@ var jwtOptions = new JwtOptions
 
 builder.Services
     .AddRkdScalar(builder.Configuration)
-    .WithAutoVersioning()
+    .WithVersioning("v1", "v2", "v3")
     .WithUiProtection<UiDocCredentialValidator>()
     .WithBasicAuth<UiDocCredentialValidator>()
     .WithBearerAuth<AuthCredential, ApiCredentialValidator>(jwtOptions);
@@ -108,7 +108,7 @@ app.Run();
 
 # API Versioning
 
-The package integrates automatically with **Asp.Versioning**.
+The package integrates with **Asp.Versioning**.
 
 Example of a versioned controller:
 
@@ -129,7 +129,7 @@ public class PaymentController : ControllerBase
 }
 ```
 
-In Scalar, each version will automatically be displayed as a separate document.
+In Scalar, each version will be displayed as a separate document.
 
 ---
 
@@ -303,7 +303,7 @@ The feature-based architecture allows new functionalities to be added easily wit
 ```csharp
 builder.Services
     .AddRkdScalar(builder.Configuration)
-    .WithAutoVersioning()
+    .WithVersioning("v1", "v2", "v3")
     .WithUiProtection<UiDocCredentialValidator>()
     .WithBasicAuth<UiDocCredentialValidator>()
     .WithBearerAuth<AuthCredential, ApiCredentialValidator>(jwtOptions);

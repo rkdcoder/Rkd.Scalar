@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar NuGet</Product>
 
-    <PackageDescription>Zero-boilerplate Scalar wrapper for ASP.NET Core that configures OpenAPI, Auto-Versioning, and Auth in seconds, featuring built-in UI Protection.</PackageDescription>
+    <PackageDescription>Zero-boilerplate Scalar wrapper for ASP.NET Core that configures OpenAPI, Versioning, and Auth in seconds, featuring built-in UI Protection.</PackageDescription>
 
     <Description>
       Rkd.Scalar is an opinionated wrapper designed to eliminate the boilerplate required to set up robust API documentation infrastructure in ASP.NET Core.
@@ -20,7 +20,7 @@
       🚀 Zero Boilerplate: Reduce 50+ lines of OpenAPI/Swagger configuration to just 3 fluent lines.
       🛡️ UI Protection: Exclusive feature to password-protect your documentation page (Basic Auth) without blocking the API.
       🔑 Integrated Security: Simplified setup for JWT Bearer and Basic Authentication for testing and internal services.
-      ⚡ Auto-Versioning: Native integration with Asp.Versioning to automatically organize controllers by version.
+      ⚡ Versioning: Native integration with Asp.Versioning.
 
       Suitable for Modern ASP.NET Core Web APIs (.NET 10.0+).
     </Description>
@@ -32,7 +32,7 @@
     <Readme>README.md</Readme>
 
     <Title>Rkd.Scalar</Title>
-    <Summary>Opinionated wrapper for Scalar docs with built-in Auth, UI Protection, and Auto-Versioning.</Summary>
+    <Summary>Opinionated wrapper for Scalar docs with built-in Auth, UI Protection, and Versioning.</Summary>
     <PackageTags>scalar openapi swagger documentation auth jwt versioning aspnetcore middleware clean-architecture ui-protection</PackageTags>
     
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

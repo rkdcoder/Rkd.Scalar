@@ -23,7 +23,6 @@ namespace Rkd.Scalar.Tests.Unit
         [Fact]
         public void TryParse_ShouldReturnTrue_AndCredentials_WhenHeaderIsValid()
         {
-            // "admin:123456" em base64 -> YWRtaW46MTIzNDU2
             var header = "Basic YWRtaW46MTIzNDU2";
 
             var result = BasicAuthParser.TryParse(header, out var creds);
@@ -36,7 +35,6 @@ namespace Rkd.Scalar.Tests.Unit
         [Fact]
         public void TryParse_ShouldHandleColonInPassword()
         {
-            // "user:pass:word" -> base64
             var raw = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("user:pass:word"));
             var header = $"Basic {raw}";
 

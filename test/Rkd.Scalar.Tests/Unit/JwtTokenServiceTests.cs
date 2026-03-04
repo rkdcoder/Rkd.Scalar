@@ -10,7 +10,7 @@ namespace Rkd.Scalar.Tests.Unit
     {
         private readonly JwtOptions _options = new()
         {
-            Secret = new string('a', 32), // 32 chars min
+            Secret = new string('a', 32),
             Issuer = "test-issuer",
             Audience = "test-audience",
             Expiration = TimeSpan.FromHours(1),
@@ -27,7 +27,6 @@ namespace Rkd.Scalar.Tests.Unit
 
             result.Token.Should().NotBeNullOrEmpty();
 
-            // Validar leitura do token
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(result.Token);
 

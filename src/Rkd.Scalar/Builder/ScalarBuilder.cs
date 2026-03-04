@@ -61,9 +61,12 @@ namespace Rkd.Scalar.Builder
             return this;
         }
 
-        public ScalarBuilder WithAutoVersioning()
+        public ScalarBuilder WithVersioning(params string[] versions)
         {
-            RegisterFeature(new VersioningFeature());
+            if (versions == null || versions.Length == 0)
+                throw new ArgumentException("At least one version must be provided.");
+
+            RegisterFeature(new VersioningFeature(versions));
 
             return this;
         }

@@ -21,9 +21,7 @@ namespace Rkd.Scalar.Extensions
 
             services.AddSingleton(builder);
 
-            builder.RegisterFeature(new DefaultOpenApiFeature());
-
-            services.AddSingleton<OpenApiDocumentRegistry>();
+            services.AddOpenApi();
 
             return builder;
         }
@@ -41,16 +39,16 @@ namespace Rkd.Scalar.Extensions
 
             app.MapOpenApi(options.OpenApiRoutePattern);
 
-            var versionProvider =
+            var provider =
                 app.Services.GetService<IApiVersionDescriptionProvider>();
 
             app.MapScalarApiReference(opt =>
             {
                 opt.Title = options.Title;
 
-                if (versionProvider != null)
+                if (provider != null)
                 {
-                    foreach (var description in versionProvider.ApiVersionDescriptions)
+                    foreach (var description in provider.ApiVersionDescriptions)
                     {
                         opt.AddDocument(description.GroupName);
                     }
