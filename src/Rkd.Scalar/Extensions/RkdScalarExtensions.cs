@@ -1,0 +1,80 @@
+﻿using Asp.Versioning.ApiExplorer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Rkd.Scalar.Builder;
+using Rkd.Scalar.Configuration;
+using Rkd.Scalar.Features;
+using Rkd.Scalar.OpenApi;
+using Scalar.AspNetCore;
+
+namespace Rkd.Scalar.Extensions
+{
+
+    public static class RkdScalarExtensions
+    {
+        public static ScalarBuilder AddRkdScalar(
+            this IServiceCollection services,
+            IConfiguration configuration)
+        {
+            var builder = new ScalarBuilder(services, configuration);
+
+            services.AddSingleton(builder);
+
+            services.AddOpenApi();
+
+            services.AddSingleton<OpenApiDocumentRegistry>();
+
+            return builder;
+        }
+
+        public static IApplicationBuilder UseRkdScalar(
+            this WebApplication app,
+            RkdScalarConfiguration options)
+        {
+            var features = app.Services.GetServices<IScalarFeature>();
+
+            foreach (var feature in features)
+            {
+                feature.ConfigureApp(app);
+            }
+
+            app.MapOpenApi(options.OpenApiRoutePattern);
+
+            var versionProvider =
+                app.Services.GetService<IApiVersionDescriptionProvider>();
+
+            var registry =
+                app.Services.GetService<OpenApiDocumentRegistry>();
+
+            app.MapScalarApiReference(opt =>
+            {
+                opt.Title = options.Title;
+
+                if (versionProvider != null)
+                {
+                    foreach (var description in versionProvider.ApiVersionDescriptions)
+                    {
+                        opt.AddDocument(description.GroupName);
+                    }
+
+                    return;
+                }
+
+                if (registry != null)
+                {
+                    foreach (var doc in registry.GetDocuments())
+                    {
+                        opt.AddDocument(doc);
+                    }
+
+                    return;
+                }
+
+                opt.AddDocument("v1");
+            });
+
+            return app;
+        }
+    }
+}

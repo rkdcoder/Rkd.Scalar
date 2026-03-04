@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Rkd.Scalar/Rkd.Scalar.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Rkd.Scalar.Tests/Rkd.Scalar.Tests.csproj" Id="cbb1f0e2-2706-4e5c-9413-9e20708e6fd6" />
+  </Folder>
+</Solution>

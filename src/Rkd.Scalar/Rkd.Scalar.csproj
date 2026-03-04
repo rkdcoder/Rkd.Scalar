@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Rkd.Scalar</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Rodrigo Kmiecik</Authors>
+    <Company>rkd.com.br</Company>
+    <Product>Rkd.Scalar NuGet</Product>
+
+    <PackageDescription>Zero-boilerplate Scalar wrapper for ASP.NET Core that configures OpenAPI, Auto-Versioning, and Auth in seconds, featuring built-in UI Protection.</PackageDescription>
+
+    <Description>
+      Rkd.Scalar is an opinionated wrapper designed to eliminate the boilerplate required to set up robust API documentation infrastructure in ASP.NET Core.
+
+      Key features:
+      🚀 Zero Boilerplate: Reduce 50+ lines of OpenAPI/Swagger configuration to just 3 fluent lines.
+      🛡️ UI Protection: Exclusive feature to password-protect your documentation page (Basic Auth) without blocking the API.
+      🔑 Integrated Security: Simplified setup for JWT Bearer and Basic Authentication for testing and internal services.
+      ⚡ Auto-Versioning: Native integration with Asp.Versioning to automatically organize controllers by version.
+
+      Suitable for Modern ASP.NET Core Web APIs (.NET 10.0+).
+    </Description>
+
+    <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <Readme>README.md</Readme>
+
+    <Title>Rkd.Scalar</Title>
+    <Summary>Opinionated wrapper for Scalar docs with built-in Auth, UI Protection, and Auto-Versioning.</Summary>
+    <PackageTags>scalar openapi swagger documentation auth jwt versioning aspnetcore middleware clean-architecture ui-protection</PackageTags>
+    
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" Version="8.1.1" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.12.54" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="Media\icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
