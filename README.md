@@ -57,6 +57,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 
+var jwtOptions = new JwtOptions
+{
+    Secret = "SUPER_SECRET_KEY",
+    Issuer = "MyApi",
+    Audience = "MyApiClient",
+    Expiration = TimeSpan.FromHours(2),
+    ValidateNotBefore = true
+};
+
 builder.Services
     .AddRkdScalar(builder.Configuration)
     .WithAutoVersioning()
