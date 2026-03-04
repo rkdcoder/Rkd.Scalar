@@ -155,7 +155,7 @@ public class UiCredentialValidator : ICredentialValidator<BasicAuthCredentials>
         if (request.Username == "admin" && request.Password == "123")
         {
             var identity = new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.Name, request.Username) },
+                new[] { new Claim(ClaimTypes.Name, request.Username), new Claim(ClaimTypes.Role, "ADMIN" ) },
                 "Basic"
             );
 
@@ -214,7 +214,7 @@ public class LoginValidator : ICredentialValidator<LoginRequest>
         if (request.Username == "admin" && request.Password == "123")
         {
             var identity = new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.Name, request.Username) },
+                new[] { new Claim(ClaimTypes.Name, request.Username), new Claim(ClaimTypes.Role, "ADMIN" ) },
                 "Bearer"
             );
 
@@ -239,6 +239,25 @@ public IActionResult SecureEndpoint()
 {
     return Ok("Authorized access");
 }
+```
+
+---
+
+# Launch in browser
+
+To lauch automatically in browser, medify the filee YourProject/Properties/lauchSettings.json in http and https:
+
+Change launchBrowser to true:
+
+```json
+"launchBrowser": true
+```
+
+Add line "launchUrl": "scalar/v1" after "launchBrowser": true:
+
+```json
+"launchBrowser": true,
+"launchUrl": "scalar/v1"
 ```
 
 ---
