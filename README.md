@@ -245,7 +245,7 @@ public IActionResult SecureEndpoint()
 
 # Launch in browser
 
-To lauch automatically in browser, medify the filee YourProject/Properties/lauchSettings.json in http and https:
+To launch automatically in browser, modify the file YourProject/Properties/launchSettings.json in http and https:
 
 Change launchBrowser to true:
 
