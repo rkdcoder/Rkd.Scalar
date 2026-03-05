@@ -316,6 +316,8 @@ If exceeded, the API returns:
 HTTP 429 Too Many Requests
 ```
 
+Don't forget to add `app.UseRateLimiter();` before `app.UseAuthentication();` in your program.cs file.
+
 This protects the login endpoint against **brute-force attacks**.
 
 ### Important
