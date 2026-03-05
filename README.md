@@ -105,8 +105,8 @@ var jwtOptions = new JwtOptions
 builder.Services
     .AddRkdScalar(builder.Configuration)
     .WithVersioning("v1")
-    .WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
-    .WithDefaultJwtLogin<LoginRequest>();
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>();
 
 var app = builder.Build();
 
@@ -238,8 +238,8 @@ The credential type used in `WithDefaultJwtLogin<TCredential>()` **must be the s
 Correct usage:
 
 ```csharp
-.WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
-.WithDefaultJwtLogin<LoginRequest>()
+.WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+.WithDefaultJwtLogin<AuthCredential>()
 ```
 
 Incorrect usage (will throw an exception during startup):
@@ -353,6 +353,19 @@ using Basic Authentication.
 
 # JWT Authentication
 
+Example credential model:
+
+```csharp
+public class AuthCredential
+{
+    public string Username { get; set; }
+
+    public string Password { get; set; }
+}
+```
+
+This class can be **any model you prefer**. Rkd.Scalar only requires that the model contains the credentials needed by your validator.
+
 Configuration:
 
 ```csharp
@@ -367,7 +380,7 @@ var jwtOptions = new JwtOptions
 
 builder.Services
     .AddRkdScalar(builder.Configuration)
-    .WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions);
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions);
 ```
 
 Validator example:
@@ -376,10 +389,10 @@ Validator example:
 using Rkd.Scalar.Security.Contracts;
 using System.Security.Claims;
 
-public class LoginValidator : ICredentialValidator<LoginRequest>
+public class LoginValidator : ICredentialValidator<AuthCredential>
 {
     public Task<ClaimsIdentity?> ValidateAsync(
-        LoginRequest request,
+        AuthCredential request,
         CancellationToken cancellationToken = default)
     {
         if (request.Username == "admin" && request.Password == "123")
