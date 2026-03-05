@@ -210,7 +210,7 @@ Response:
 You can customize the endpoint path:
 
 ```csharp
-.WithDefaultJwtLogin<LoginRequest>("/auth/login")
+.WithDefaultJwtLogin<AuthCredential>("/auth/login")
 ```
 
 Generated endpoint:
@@ -566,8 +566,8 @@ builder.Services
     .WithVersioning("v1", "v2", "v3")
     .WithUiProtection<UiCredentialValidator>()
     .WithBasicAuth<UiCredentialValidator>()
-    .WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
-    .WithDefaultJwtLogin<LoginRequest>()
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>()
     .WithApiKeyAuth<ApiKeyValidator>();
 ```
 
