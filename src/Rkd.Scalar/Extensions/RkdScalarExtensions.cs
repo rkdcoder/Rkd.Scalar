@@ -4,8 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.Builder;
 using Rkd.Scalar.Configuration;
-using Rkd.Scalar.Features;
-using Rkd.Scalar.OpenApi;
+using Rkd.Scalar.Infrastructure;
 using Scalar.AspNetCore;
 
 namespace Rkd.Scalar.Extensions
@@ -17,22 +16,26 @@ namespace Rkd.Scalar.Extensions
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            var builder = new ScalarBuilder(services, configuration);
-
-            services.AddSingleton(builder);
-
             services.AddOpenApi();
 
-            return builder;
+            var registry = new ScalarFeatureRegistry();
+
+            services.AddSingleton(registry);
+
+            return new ScalarBuilder(
+                services,
+                configuration,
+                registry);
         }
 
         public static IApplicationBuilder UseRkdScalar(
-            this WebApplication app,
-            RkdScalarConfiguration options)
+           this WebApplication app,
+           RkdScalarConfiguration options)
         {
-            var features = app.Services.GetServices<IScalarFeature>();
+            var registry =
+                app.Services.GetRequiredService<ScalarFeatureRegistry>();
 
-            foreach (var feature in features)
+            foreach (var feature in registry.Features)
             {
                 feature.ConfigureApp(app);
             }
@@ -45,6 +48,9 @@ namespace Rkd.Scalar.Extensions
             app.MapScalarApiReference(opt =>
             {
                 opt.Title = options.Title;
+                opt.Theme = options.Theme;
+
+                options.ConfigureScalar?.Invoke(opt);
 
                 if (provider != null)
                 {
@@ -58,6 +64,8 @@ namespace Rkd.Scalar.Extensions
                     opt.AddDocument("v1");
                 }
             });
+
+            ReservedRouteGuard.EnsureControllersDoNotUseReservedRoutes(app);
 
             return app;
         }

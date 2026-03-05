@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 using Rkd.Scalar.Features;
+using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Security.ApiKey;
 using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
@@ -16,21 +18,23 @@ namespace Rkd.Scalar.Builder
 
         public IConfiguration Configuration { get; }
 
-        private readonly List<IScalarFeature> _features = new();
+        private readonly ScalarFeatureRegistry _registry;
 
-        public ScalarBuilder(IServiceCollection services, IConfiguration configuration)
+        internal ScalarBuilder(
+            IServiceCollection services,
+            IConfiguration configuration,
+            ScalarFeatureRegistry registry)
         {
             Services = services;
             Configuration = configuration;
+            _registry = registry;
         }
 
         internal void RegisterFeature(IScalarFeature feature)
         {
-            _features.Add(feature);
+            _registry.Features.Add(feature);
 
             feature.ConfigureServices(Services, Configuration);
-
-            Services.AddSingleton(feature);
         }
 
         /// <summary>
@@ -156,18 +160,39 @@ namespace Rkd.Scalar.Builder
         /// Credential model expected in the login request body.
         /// </typeparam>
         /// <param name="path">
-        /// Route where the login endpoint will be exposed. Default: "/default-auth/login".
+        /// Route where the login endpoint will be exposed.
+        /// </param>
+        /// <param name="permitLimit">
+        /// Maximum number of allowed authentication attempts within the defined time window.
+        /// This value is used to configure a rate limiter to protect the login endpoint
+        /// against brute-force attacks.
+        /// </param>
+        /// <param name="window">
+        /// Time window used by the rate limiter to control how many requests are allowed.
         /// </param>
         /// <remarks>
         /// This endpoint validates the provided credentials using the configured
-        /// <see cref="ICredentialValidator{T}"/> and returns a generated JWT token.
-        /// Useful for simple authentication scenarios or development environments.
+        /// <see cref="ICredentialValidator{T}"/> and returns a generated JWT access token.
+        ///
+        /// A built-in rate limiter is automatically configured using the provided
+        /// <paramref name="permitLimit"/> and <paramref name="window"/> parameters in order
+        /// to prevent excessive authentication attempts.
+        ///
+        /// The credential type used here must match the credential type configured in
+        /// <c>WithBearerAuth&lt;TCredential, TValidator&gt;()</c>.
         /// </remarks>
         /// <returns>The current <see cref="ScalarBuilder"/> instance.</returns>
-        public ScalarBuilder WithDefaultJwtLogin<TCredential>(string path = "/default-auth/login")
+        public ScalarBuilder WithDefaultJwtLogin<TCredential>(
+            string path,
+            int permitLimit,
+            TimeSpan window)
             where TCredential : class
         {
-            RegisterFeature(new DefaultJwtLoginFeature<TCredential>(path));
+            RegisterFeature(
+                new DefaultJwtLoginFeature<TCredential>(
+                    path,
+                    permitLimit,
+                    window));
 
             return this;
         }
@@ -187,6 +212,7 @@ namespace Rkd.Scalar.Builder
                 options.LowercaseUrls = true;
                 options.LowercaseQueryStrings = true;
             });
+
             return this;
         }
     }

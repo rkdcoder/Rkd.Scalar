@@ -8,24 +8,17 @@ namespace Rkd.Scalar.Security.Jwt
     {
         public static void MapJwtLogin<TCredential>(
             WebApplication app,
-            string path)
+            string path,
+            string rateLimitPolicy)
             where TCredential : class
         {
             app.MapPost(path,
                 async (
-                    JwtLoginRequest request,
+                    TCredential credential,
                     ICredentialValidator<TCredential> validator,
                     IJwtTokenService jwtService
                 ) =>
                 {
-                    var credential = Activator.CreateInstance(
-                        typeof(TCredential),
-                        request.Username,
-                        request.Password) as TCredential;
-
-                    if (credential == null)
-                        return Results.BadRequest();
-
                     var identity = await validator.ValidateAsync(credential);
 
                     if (identity == null)
@@ -39,6 +32,7 @@ namespace Rkd.Scalar.Security.Jwt
                         expires_at = token.ExpiresAtUtc
                     });
                 })
+            .RequireRateLimiting(rateLimitPolicy)
             .WithTags("Authentication")
             .AllowAnonymous();
         }

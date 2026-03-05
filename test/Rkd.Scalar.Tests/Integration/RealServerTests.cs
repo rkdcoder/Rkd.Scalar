@@ -22,8 +22,9 @@ namespace Rkd.Scalar.Tests.Integration
                 serverOptions.Listen(IPAddress.Loopback, 0);
             });
 
-            builder.Services.AddRkdScalar(builder.Configuration)
-                   .WithUiProtection<FakeCredentialValidator>();
+            builder.Services
+                .AddRkdScalar(builder.Configuration)
+                .WithUiProtection<FakeCredentialValidator>();
 
             _app = builder.Build();
 
@@ -39,13 +40,18 @@ namespace Rkd.Scalar.Tests.Integration
         {
             await StartServerAsync();
 
-            using var client = new HttpClient { BaseAddress = new Uri(_baseAddress) };
+            using var client = new HttpClient
+            {
+                BaseAddress = new Uri(_baseAddress)
+            };
 
             var response = await client.GetAsync("/scalar/v1");
 
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
-            response.Headers.WwwAuthenticate.Should().Contain(h => h.Scheme == "Basic");
+            response.Headers.WwwAuthenticate
+                .Should()
+                .Contain(h => h.Scheme == "Basic");
         }
 
         public async ValueTask DisposeAsync()
