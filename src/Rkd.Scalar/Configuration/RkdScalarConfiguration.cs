@@ -6,7 +6,7 @@ namespace Rkd.Scalar.Configuration
     {
         public string OpenApiRoutePattern { get; set; } = "/openapi/{documentName}.json";
 
-        public string Title { get; set; } = "API Documentation";
+        public string Title { get; set; } = "API Documentation.";
 
         public ScalarTheme Theme { get; set; } = ScalarTheme.Default;
 
