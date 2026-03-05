@@ -2,5 +2,6 @@
 {
     internal interface IBearerAuthFeature
     {
+        Type CredentialType { get; }
     }
 }

@@ -231,6 +231,26 @@ You must configure:
 
 before calling it.
 
+### Credential Type Requirement
+
+The credential type used in `WithDefaultJwtLogin<TCredential>()` **must be the same** used in `WithBearerAuth<TCredential, TValidator>()`.
+
+Correct usage:
+
+```csharp
+.WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
+.WithDefaultJwtLogin<LoginRequest>()
+```
+
+Incorrect usage (will throw an exception during startup):
+
+```csharp
+.WithBearerAuth<BasicAuthCredentials, UiCredentialValidator>(jwtOptions)
+.WithDefaultJwtLogin<AuthCredential>()
+```
+
+The login endpoint depends on the credential model registered for JWT authentication, therefore both methods must use the **same request model type**.
+
 ---
 
 # API Versioning

@@ -19,14 +19,23 @@ namespace Rkd.Scalar.Features
 
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
-            var hasBearerAuth = services.Any(x =>
-                x.ImplementationInstance is IBearerAuthFeature);
+            var bearerFeature = services
+                .FirstOrDefault(s => s.ImplementationInstance is IBearerAuthFeature)
+                ?.ImplementationInstance as IBearerAuthFeature;
 
-            if (!hasBearerAuth)
+            if (bearerFeature == null)
             {
                 throw new InvalidOperationException(
-                    "WithDefaultJwtLogin requires JWT authentication to be configured. " +
+                    "WithDefaultJwtLogin requires JWT authentication. " +
                     "Call WithBearerAuth<TCredential, TValidator>() before calling WithDefaultJwtLogin().");
+            }
+
+            if (bearerFeature.CredentialType != typeof(TCredential))
+            {
+                throw new InvalidOperationException(
+                    $"WithDefaultJwtLogin<{typeof(TCredential).Name}> must use the same credential type configured in WithBearerAuth. " +
+                    $"Expected: {bearerFeature.CredentialType.Name}. " +
+                    $"Received: {typeof(TCredential).Name}.");
             }
         }
 

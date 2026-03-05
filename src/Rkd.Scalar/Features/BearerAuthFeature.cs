@@ -16,7 +16,7 @@ namespace Rkd.Scalar.Features
         where TValidator : class, ICredentialValidator<TCredential>
     {
         private readonly JwtOptions _options;
-
+        public Type CredentialType => typeof(TCredential);
         public BearerAuthFeature(JwtOptions options)
         {
             _options = options;
