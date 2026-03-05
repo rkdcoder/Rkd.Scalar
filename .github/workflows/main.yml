@@ -3,7 +3,7 @@ name: Build, Test and Deploy Rkd.Scalar Package
 on:
   push:
     branches:
-      - main
+      - master
 
     paths-ignore:
       - "**/*.md"
