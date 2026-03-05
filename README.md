@@ -579,8 +579,161 @@ builder.Services
     .WithBasicAuth<UiCredentialValidator>()
     .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
     .WithDefaultJwtLogin<AuthCredential>()
-    .WithApiKeyAuth<ApiKeyValidator>();
+    .WithApiKeyAuth<ApiKeyValidator>()
+    .WithLowercaseRouting();
 ```
+
+---
+
+## Features Overview
+
+Below is a brief explanation of each feature available in **Rkd.Scalar** and what problem it is designed to solve.
+
+### API Versioning
+
+```csharp
+.WithVersioning("v1", "v2", "v3")
+```
+
+Enables API versioning and automatically exposes each version in the Scalar documentation UI.
+
+Each version becomes selectable in the documentation interface, allowing developers to test and explore different API versions independently.
+
+This feature integrates with **ASP.NET API Versioning** and configures the OpenAPI documents required for Scalar.
+
+Typical use cases:
+
+- Maintaining backward compatibility between API versions
+- Gradual migration between versions
+- Supporting multiple client applications using different versions
+
+---
+
+### Scalar UI Protection
+
+```csharp
+.WithUiProtection<UiCredentialValidator>()
+```
+
+Protects the **Scalar documentation interface** with Basic Authentication.
+
+This prevents unauthorized users from accessing the API documentation while keeping the API itself publicly accessible if desired.
+
+The provided validator (`ICredentialValidator<BasicAuthCredentials>`) is responsible for validating the credentials used to access the UI.
+
+Typical use cases:
+
+- Restricting documentation access in production
+- Allowing only internal teams to view API documentation
+- Preventing public exposure of internal APIs
+
+---
+
+### Basic Authentication
+
+```csharp
+.WithBasicAuth<UiCredentialValidator>()
+```
+
+Enables **HTTP Basic Authentication** support for API endpoints.
+
+This feature registers the appropriate OpenAPI security scheme and integrates the authentication flow so it can be used directly from the Scalar UI.
+
+The validator implementation is responsible for validating username and password credentials.
+
+Typical use cases:
+
+- Internal APIs
+- Simple service-to-service authentication
+- Legacy integrations
+
+---
+
+### JWT Bearer Authentication
+
+```csharp
+.WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+```
+
+Enables **JWT Bearer authentication** for the API.
+
+This feature configures:
+
+- JWT token validation
+- OpenAPI security definitions
+- Authentication middleware integration
+
+The credential model (`AuthCredential`) represents the login payload, while the validator (`LoginValidator`) is responsible for validating the credentials before issuing a token.
+
+Typical use cases:
+
+- Modern API authentication
+- Stateless authentication
+- Mobile and SPA clients
+
+---
+
+### Default JWT Login Endpoint
+
+```csharp
+.WithDefaultJwtLogin<AuthCredential>()
+```
+
+Registers a **default login endpoint** that issues JWT tokens.
+
+This endpoint uses the configured `ICredentialValidator<TCredential>` to validate credentials and generate a token based on the configured JWT options.
+
+The default endpoint path is:
+
+```
+/default-auth/login
+```
+
+This is especially useful for:
+
+- Development environments
+- Rapid prototyping
+- Simple authentication scenarios
+
+If needed, a custom authentication endpoint can still be implemented manually.
+
+---
+
+### API Key Authentication
+
+```csharp
+.WithApiKeyAuth<ApiKeyValidator>()
+```
+
+Enables **API Key authentication** support.
+
+Clients can authenticate by sending an API key, which is validated by the provided implementation of `ICredentialValidator<ApiKeyCredentials>`.
+
+The feature automatically registers the OpenAPI security scheme so the API key can be used directly from the Scalar UI.
+
+Typical use cases:
+
+- Partner integrations
+- Machine-to-machine communication
+- Public APIs with controlled access
+
+---
+
+### Lowercase Routing
+
+```csharp
+.WithLowercaseRouting()
+```
+
+Configures ASP.NET routing to generate **lowercase URLs and query strings**.
+
+This improves URL consistency and avoids issues caused by case-sensitive routing in certain environments.
+
+Benefits include:
+
+- Consistent API URLs
+- Better compatibility with proxies and gateways
+- Improved SEO for public APIs
 
 ---
 
