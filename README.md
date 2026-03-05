@@ -288,6 +288,17 @@ Scalar automatically generates a document for each version.
 
 ---
 
+# Authentications
+
+**Important**
+
+`ICredentialValidator<T>` is **provided by the Rkd.Scalar NuGet package** (`Rkd.Scalar.Security.Contracts`).
+
+When implementing validators, you should **use the interface from the package**, not create your own interface with the same name.
+This interface defines the contract used internally by Rkd.Scalar authentication features (Basic, JWT, and API Key).
+
+---
+
 # Basic Authentication
 
 Enable Basic Authentication support:
