@@ -28,8 +28,7 @@ namespace Rkd.Scalar.Features
                     var path = context.Request.Path.Value ?? "";
 
                     var isScalarUi =
-                        path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) &&
-                        !path.StartsWith("/scalar-auth", StringComparison.OrdinalIgnoreCase);
+                        path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase);
 
                     var isOpenApi =
                         path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase);

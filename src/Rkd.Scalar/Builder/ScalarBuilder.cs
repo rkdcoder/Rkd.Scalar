@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.Features;
+using Rkd.Scalar.Security.ApiKey;
 using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
 using Rkd.Scalar.Security.Jwt;
@@ -61,12 +62,28 @@ namespace Rkd.Scalar.Builder
             return this;
         }
 
+        public ScalarBuilder WithApiKeyAuth<TValidator>()
+            where TValidator : class, ICredentialValidator<ApiKeyCredentials>
+        {
+            RegisterFeature(new ApiKeyFeature<TValidator>());
+
+            return this;
+        }
+
         public ScalarBuilder WithVersioning(params string[] versions)
         {
             if (versions == null || versions.Length == 0)
-                throw new ArgumentException("At least one version must be provided.");
+                throw new ArgumentException("At least one version must be provided. Ex: .WithVersioning(\"v1\") or .WithVersioning(\"v1\", \"v2\", \"v3\")");
 
             RegisterFeature(new VersioningFeature(versions));
+
+            return this;
+        }
+
+        public ScalarBuilder WithDefaultJwtLogin<TCredential>(string path = "/default-auth/login")
+            where TCredential : class
+        {
+            RegisterFeature(new DefaultJwtLoginFeature<TCredential>(path));
 
             return this;
         }

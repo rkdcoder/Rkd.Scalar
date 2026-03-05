@@ -10,7 +10,8 @@ using System.Text;
 
 namespace Rkd.Scalar.Features
 {
-    internal sealed class BearerAuthFeature<TCredential, TValidator> : IScalarFeature
+    internal sealed class BearerAuthFeature<TCredential, TValidator>
+        : IScalarFeature, IBearerAuthFeature
         where TCredential : class
         where TValidator : class, ICredentialValidator<TCredential>
     {
@@ -60,7 +61,6 @@ namespace Rkd.Scalar.Features
 
         public void ConfigureApp(WebApplication app)
         {
-            JwtLoginEndpoint.MapJwtLogin<TCredential>(app);
         }
 
         private static void ValidateOptions(JwtOptions options)

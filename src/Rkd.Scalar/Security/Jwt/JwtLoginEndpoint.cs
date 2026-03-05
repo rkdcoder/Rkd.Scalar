@@ -7,10 +7,11 @@ namespace Rkd.Scalar.Security.Jwt
     internal static class JwtLoginEndpoint
     {
         public static void MapJwtLogin<TCredential>(
-            WebApplication app)
+            WebApplication app,
+            string path)
             where TCredential : class
         {
-            app.MapPost("/scalar-auth/login",
+            app.MapPost(path,
                 async (
                     JwtLoginRequest request,
                     ICredentialValidator<TCredential> validator,
