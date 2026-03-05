@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Win32;
 using Rkd.Scalar.Features;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Security.ApiKey;
