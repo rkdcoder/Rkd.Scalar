@@ -61,8 +61,8 @@ Most APIs can enable Scalar with only a few lines:
 builder.Services
     .AddRkdScalar(builder.Configuration)
     .WithVersioning("v1")
-    .WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
-    .WithDefaultJwtLogin<LoginRequest>();
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>();
 ```
 
 Run the application and open:
@@ -177,8 +177,8 @@ Rkd.Scalar can automatically generate a **login endpoint** for JWT authenticatio
 This feature is **explicit and opt‑in**.
 
 ```csharp
-.WithBearerAuth<LoginRequest, LoginValidator>(jwtOptions)
-.WithDefaultJwtLogin<LoginRequest>()
+.WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+.WithDefaultJwtLogin<AuthCredential>()
 ```
 
 This will create the endpoint:
