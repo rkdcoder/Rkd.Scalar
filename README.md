@@ -1,4 +1,4 @@
-# Rkd.Scalar
+# Rkd.Scalar - API Documentation Platform for ASP.NET
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rkdcoder/Rkd.Scalar/master/src/Rkd.Scalar/Media/icon.png" width="128" alt="Rkd.Scalar logo" />
@@ -8,11 +8,19 @@
 [![Build & Publish](https://github.com/rkdcoder/Rkd.Scalar/actions/workflows/main.yml/badge.svg)](https://github.com/rkdcoder/Rkd.Scalar/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Rkd.Scalar** is a modern wrapper that simplifies integrating **Scalar** into ASP.NET APIs.
+**Rkd.Scalar** adds a production-ready API documentation platform.
 
-It abstracts the complexity of configuring **OpenAPI**, **authentication**, **documentation UI protection**, and **API versioning** into a small and intuitive fluent configuration.
+It integrates:
 
-The goal is simple: configure professional API documentation in **minutes instead of hours**.
+- **Scalar UI**
+- **OpenAPI generation**
+- **JWT authentication**
+- **API Key authentication**
+- **Basic authentication**
+- **API versioning**
+- **UI protection**
+
+All with a single fluent configuration.
 
 ---
 
@@ -34,6 +42,15 @@ Rkd.Scalar focuses on three principles:
 - **Scalar UI protection** via Basic Auth
 - Built-in **API versioning integration**
 - Feature-based modular architecture
+
+---
+
+# Who is this for?
+
+- Teams building internal APIs
+- SaaS platforms exposing partner APIs
+- Developers who want production-ready documentation fast
+- Teams tired of complex Swagger configuration
 
 ---
 
@@ -82,6 +99,27 @@ You now have:
 
 # Quick Start
 
+## Without Rkd.Scalar
+
+```
+300+ lines of configuration
+OpenAPI
+JWT
+Auth schemes
+Versioning
+Security definitions
+```
+
+## With Rkd.Scalar
+
+```csharp
+builder.Services
+    .AddRkdScalar(builder.Configuration)
+    .WithVersioning("v1")
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>();
+```
+
 Minimal setup example:
 
 ```csharp
@@ -128,6 +166,17 @@ Your documentation will be available at:
 ```
 /scalar/v1
 ```
+
+# Why not Swashbuckle?
+
+| Feature                    | Swashbuckle | Rkd.Scalar |
+| -------------------------- | ----------- | ---------- |
+| **OpenAPI generation**     | ✔           | ✔          |
+| **Scalar UI**              | ❌          | ✔          |
+| **JWT login endpoint**     | ❌          | ✔          |
+| **API Key auth**           | manual      | built-in   |
+| **UI protection**          | ❌          | ✔          |
+| **Versioning integration** | manual      | built-in   |
 
 ---
 
@@ -569,7 +618,7 @@ This makes the library:
 
 ---
 
-# Example Configuration
+# Production Example
 
 ```csharp
 builder.Services
@@ -762,4 +811,4 @@ MIT License
 
 # Author
 
-Created to simplify Scalar integration in modern ASP.NET APIs.
+Built on the belief that API documentation should take minutes, not hours.
