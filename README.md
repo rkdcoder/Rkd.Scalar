@@ -108,7 +108,7 @@ You now have:
 ## Without Rkd.Scalar
 
 ```
-300+ lines of configuration
+200+ lines of configuration
 OpenAPI
 JWT
 Auth schemes
