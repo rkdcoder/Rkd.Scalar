@@ -90,8 +90,9 @@ namespace Rkd.Scalar.Features
             if (bearerFeature == null)
             {
                 throw new InvalidOperationException(
-                    "WithDefaultJwtLogin requires JWT authentication. " +
-                    "Call WithBearerAuth<TCredential, TValidator>() before calling WithDefaultJwtLogin().");
+                    "WithDefaultJwtLogin requires JWT authentication with credential validator. " +
+                    "Call WithBearerAuth<TCredential, TValidator>() before calling WithDefaultJwtLogin(). " +
+                    "The non-generic overload WithBearerAuth(JwtOptions) is validation-only and cannot issue login tokens.");
             }
 
             if (bearerFeature.CredentialType != typeof(TCredential))

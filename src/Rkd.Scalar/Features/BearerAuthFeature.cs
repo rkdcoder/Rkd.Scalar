@@ -10,23 +10,22 @@ using System.Text;
 
 namespace Rkd.Scalar.Features
 {
-    internal sealed class BearerAuthFeature<TCredential, TValidator>
-        : IScalarFeature, IBearerAuthFeature
-        where TCredential : class
-        where TValidator : class, ICredentialValidator<TCredential>
+    /// <summary>
+    /// JWT Bearer authentication feature (validation-only mode).
+    /// Does not require credential model or validator.
+    /// </summary>
+    internal class BearerAuthFeature : IScalarFeature
     {
         private readonly JwtOptions _options;
-        public Type CredentialType => typeof(TCredential);
+
         public BearerAuthFeature(JwtOptions options)
         {
             _options = options;
         }
 
-        public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        public virtual void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             ValidateOptions(_options);
-
-            services.AddScoped<ICredentialValidator<TCredential>, TValidator>();
 
             services.AddSingleton(_options);
             services.AddSingleton<IJwtTokenService, JwtTokenService>();
@@ -48,7 +47,6 @@ namespace Rkd.Scalar.Features
                         ValidAudience = _options.Audience,
 
                         ValidateLifetime = true,
-
                         ClockSkew = TimeSpan.Zero
                     };
                 });
@@ -63,10 +61,33 @@ namespace Rkd.Scalar.Features
         {
         }
 
-        private static void ValidateOptions(JwtOptions options)
+        protected static void ValidateOptions(JwtOptions options)
         {
             if (options.Secret.Length < 32)
                 throw new InvalidOperationException("JWT secret must be at least 32 characters.");
+        }
+    }
+
+    /// <summary>
+    /// JWT Bearer authentication feature with credential validation support
+    /// (required by WithDefaultJwtLogin).
+    /// </summary>
+    internal sealed class BearerAuthFeature<TCredential, TValidator>
+        : BearerAuthFeature, IBearerAuthFeature
+        where TCredential : class
+        where TValidator : class, ICredentialValidator<TCredential>
+    {
+        public Type CredentialType => typeof(TCredential);
+
+        public BearerAuthFeature(JwtOptions options)
+            : base(options)
+        {
+        }
+
+        public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        {
+            base.ConfigureServices(services, configuration);
+            services.AddScoped<ICredentialValidator<TCredential>, TValidator>();
         }
     }
 }

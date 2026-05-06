@@ -81,12 +81,21 @@ Install-Package Rkd.Scalar
 Most APIs can enable Scalar with only a few lines:
 
 ```csharp
+// JWT validation only (without login endpoint)
+builder.Services
+    .AddRkdScalar(builder.Configuration)
+    .WithVersioning("v1")
+    .WithBearerAuth(jwtOptions);
+```
+```csharp
+// JWT + default login endpoint
 builder.Services
     .AddRkdScalar(builder.Configuration)
     .WithVersioning("v1")
     .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
     .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
 ```
+
 
 Run the application and open:
 
@@ -322,12 +331,20 @@ This protects the login endpoint against **brute-force attacks**.
 
 ### Important
 
-`WithDefaultJwtLogin()` requires JWT authentication.
+`WithDefaultJwtLogin()` requires JWT authentication with credential validation.
 
 You must configure:
 
 ```csharp
 .WithBearerAuth<TCredential, TValidator>()
+```
+
+before calling it.
+
+The overload below is validation-only and cannot issue login tokens:
+
+```csharp
+.WithBearerAuth(jwtOptions)
 ```
 
 before calling it.
@@ -398,20 +415,11 @@ public class UiCredentialValidator : ICredentialValidator<BasicAuthCredentials>
 
 # JWT Authentication
 
-Example credential model:
+Rkd.Scalar supports two JWT modes:
 
-```csharp
-public class AuthCredential
-{
-    public string Username { get; set; }
+## 1) Validation-only (no login endpoint)
 
-    public string Password { get; set; }
-}
-```
-
-This class can be **any model you prefer**. Rkd.Scalar only requires that the model contains the credentials needed by your validator.
-
-Configuration:
+Use this mode when your API only validates bearer tokens issued elsewhere.
 
 ```csharp
 var jwtOptions = new JwtOptions
@@ -425,7 +433,31 @@ var jwtOptions = new JwtOptions
 
 builder.Services
     .AddRkdScalar(builder.Configuration)
-    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions);
+    .WithBearerAuth(jwtOptions);
+```
+
+This configures JWT validation and OpenAPI Bearer security without requiring
+a credential model or validator.
+
+## 2) JWT with default login endpoint
+
+Use this mode when you want Rkd.Scalar to expose a login endpoint that issues tokens.
+
+```csharp
+builder.Services
+    .AddRkdScalar(builder.Configuration)
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
+```
+
+Example credential model:
+
+```csharp
+public class AuthCredential
+{
+    public string Username { get; set; }
+    public string Password { get; set; }
+}
 ```
 
 Validator example:
@@ -671,6 +703,12 @@ builder.Services
     .WithLowercaseRouting();
 ```
 
+If your API does not expose a login endpoint, prefer the simpler JWT setup:
+
+```csharp
+.WithBearerAuth(jwtOptions)
+```
+
 ---
 
 ## Features Overview
@@ -741,9 +779,23 @@ Typical use cases:
 
 ### JWT Bearer Authentication
 
+Rkd.Scalar supports two JWT setup modes:
+
+Validation-only (no login endpoint):
+
+```csharp
+.WithBearerAuth(jwtOptions)
+```
+
+JWT + login endpoint support:
+
 ```csharp
 .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
 ```
+
+The validation-only mode configures token validation and OpenAPI Bearer scheme.
+The generic mode additionally enables credential validation flow required by
+`WithDefaultJwtLogin<TCredential>()`.
 
 Enables **JWT Bearer authentication** for the API.
 

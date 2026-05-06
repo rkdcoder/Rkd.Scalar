@@ -109,6 +109,24 @@ namespace Rkd.Scalar.Builder
         }
 
         /// <summary>
+        /// Enables JWT Bearer Authentication support for token validation only,
+        /// without requiring a login credential model/validator.
+        /// </summary>
+        /// <param name="options">
+        /// Configuration options used to validate JWT tokens.
+        /// </param>
+        /// <remarks>
+        /// Use this overload when your API only validates bearer tokens
+        /// and does not expose a JWT login endpoint via Rkd.Scalar.
+        /// </remarks>
+        /// <returns>The current <see cref="ScalarBuilder"/> instance.</returns>
+        public ScalarBuilder WithBearerAuth(JwtOptions options)
+        {
+            RegisterFeature(new BearerAuthFeature(options));
+            return this;
+        }
+
+        /// <summary>
         /// Enables API Key authentication support for the API.
         /// </summary>
         /// <typeparam name="TValidator">
