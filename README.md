@@ -695,8 +695,8 @@ builder.Services
     .WithUiProtection<UiCredentialValidator>()
     .WithBearerAuth(jwtOptions)
     .WithLowercaseRouting();
-IConfiguration is injected automatically by ASP.NET's dependency injection container. No additional registration is required.
 ```
+IConfiguration is injected automatically by ASP.NET's dependency injection container. No additional registration is required.
 
 # API Versioning
 
