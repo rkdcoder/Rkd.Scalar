@@ -584,6 +584,120 @@ using Basic Authentication.
 
 ---
 
+# Reading UI Credentials from appsettings.json
+When using WithUiProtection<TValidator>(), the recommended approach is to implement the validator by injecting IConfiguration and reading credentials directly from appsettings.json.
+
+This keeps Program.cs clean and allows credentials to be managed per environment without changing code.
+
+appsettings.json
+```json
+{
+  "UiCredentials": {
+    "Username": "myuser",
+    "Password": "mypassword"
+  }
+}
+```
+Validator implementation
+```csharp
+using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
+using Rkd.Scalar.Security.Basic;
+using Rkd.Scalar.Security.Contracts;
+
+public sealed class UiCredentialValidator : ICredentialValidator<BasicAuthCredentials>
+{
+    private readonly IReadOnlyDictionary<string, string> _credentials;
+
+    public UiCredentialValidator(IConfiguration configuration)
+    {
+        var section = configuration.GetSection("UiCredentials");
+        var creds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Format 1: UiCredentials:Username / UiCredentials:Password
+        var singleUsername = section["Username"];
+        var singlePassword = section["Password"];
+        if (!string.IsNullOrWhiteSpace(singleUsername) && singlePassword is not null)
+            creds[singleUsername] = singlePassword;
+
+        // Format 2: UiCredentials:{ "user1": "pass1", "user2": "pass2" }
+        foreach (var child in section.GetChildren())
+        {
+            if (child.Key.Equals("Username", StringComparison.OrdinalIgnoreCase) ||
+                child.Key.Equals("Password", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.IsNullOrWhiteSpace(child.Key) && child.Value is not null)
+                creds[child.Key] = child.Value;
+        }
+
+        _credentials = creds;
+    }
+
+    public Task<ClaimsIdentity?> ValidateAsync(
+        BasicAuthCredentials request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request is null ||
+            string.IsNullOrWhiteSpace(request.Username) ||
+            request.Password is null)
+            return Task.FromResult<ClaimsIdentity?>(null);
+
+        var valid = _credentials.TryGetValue(request.Username, out var expectedPassword) &&
+                    string.Equals(expectedPassword, request.Password, StringComparison.Ordinal);
+
+        if (!valid)
+            return Task.FromResult<ClaimsIdentity?>(null);
+
+        var identity = new ClaimsIdentity(
+            new[]
+            {
+                new Claim(ClaimTypes.Name, request.Username),
+                new Claim(ClaimTypes.Role, "user")
+            },
+            authenticationType: "Basic");
+
+        return Task.FromResult<ClaimsIdentity?>(identity);
+    }
+}
+```
+This validator supports two credential formats in appsettings.json:
+
+Single user:
+
+```json
+{
+  "UiCredentials": {
+    "Username": "myuser",
+    "Password": "mypassword"
+  }
+}
+```
+Multiple users:
+
+```json
+{
+  "UiCredentials": {
+    "alice": "password1",
+    "bob": "password2"
+  }
+}
+```
+Behavior
+Username comparison is case-insensitive
+Password comparison is case-sensitive (exact match)
+Any username with a null password is rejected
+
+Registration
+```csharp
+builder.Services
+    .AddRkdScalar(builder.Configuration)
+    .WithUiProtection<UiCredentialValidator>()
+    .WithBearerAuth(jwtOptions)
+    .WithLowercaseRouting();
+IConfiguration is injected automatically by ASP.NET's dependency injection container. No additional registration is required.
+```
+
 # API Versioning
 
 Rkd.Scalar integrates with **Asp.Versioning** automatically.
