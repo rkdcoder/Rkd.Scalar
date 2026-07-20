@@ -127,6 +127,52 @@ namespace Rkd.Scalar.Builder
         }
 
         /// <summary>
+        /// Enables JWT Bearer Authentication, binding <see cref="JwtOptions"/>
+        /// from the given configuration section (appsettings.json).
+        /// </summary>
+        public ScalarBuilder WithBearerAuth<TCredential, TValidator>(
+            string sectionName = "JwtOptions")
+            where TCredential : class
+            where TValidator : class, ICredentialValidator<TCredential>
+        {
+            return WithBearerAuth<TCredential, TValidator>(
+                BindJwtOptions(sectionName));
+        }
+
+        /// <summary>
+        /// Enables JWT Bearer Authentication (validation-only mode), binding
+        /// <see cref="JwtOptions"/> from the given configuration section.
+        /// </summary>
+        public ScalarBuilder WithBearerAuth(string sectionName = "JwtOptions")
+        {
+            return WithBearerAuth(BindJwtOptions(sectionName));
+        }
+
+        private JwtOptions BindJwtOptions(string sectionName)
+        {
+            var section = Configuration.GetSection(sectionName);
+
+            if (!section.Exists())
+                throw new InvalidOperationException(
+                    $"Configuration section '{sectionName}' was not found. " +
+                    "Add it to appsettings.json or use the WithBearerAuth(JwtOptions) overload.");
+
+            var settings = section.Get<JwtSettings>()
+                ?? throw new InvalidOperationException(
+                    $"Configuration section '{sectionName}' could not be bound to JwtSettings.");
+
+            if (string.IsNullOrWhiteSpace(settings.Secret))
+                throw new InvalidOperationException(
+                    $"'{sectionName}:Secret' is required and cannot be empty.");
+
+            if (settings.Expiration <= 0)
+                throw new InvalidOperationException(
+                    $"'{sectionName}:Expiration' must be greater than zero (value in hours).");
+
+            return settings.ToJwtOptions();
+        }
+
+        /// <summary>
         /// Enables API Key authentication support for the API.
         /// </summary>
         /// <typeparam name="TValidator">

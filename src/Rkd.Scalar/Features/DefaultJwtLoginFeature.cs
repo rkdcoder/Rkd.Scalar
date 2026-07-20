@@ -4,8 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Security.Jwt;
-using System.Threading.RateLimiting;
-
 
 namespace Rkd.Scalar.Features
 {
@@ -60,19 +58,22 @@ namespace Rkd.Scalar.Features
         {
             if (_permitLimit is int permitLimit && _window is TimeSpan window)
             {
+                var retryAfterSeconds =
+                    ((int)Math.Ceiling(window.TotalSeconds)).ToString();
+
                 services.AddRateLimiter(options =>
                 {
-                    options.AddFixedWindowLimiter("rkd-scalar-login", opt =>
+                    options.AddFixedWindowLimiter(DefaultPolicyName, opt =>
                     {
-                        opt.PermitLimit = 5;
-                        opt.Window = TimeSpan.FromMinutes(1);
+                        opt.PermitLimit = permitLimit;
+                        opt.Window = window;
                         opt.QueueLimit = 0;
                     });
 
                     options.OnRejected = (context, token) =>
                     {
                         context.HttpContext.Response.StatusCode = 429;
-                        context.HttpContext.Response.Headers.RetryAfter = "60";
+                        context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds;
                         return ValueTask.CompletedTask;
                     };
                 });
@@ -104,7 +105,7 @@ namespace Rkd.Scalar.Features
             JwtLoginEndpoint.MapJwtLogin<TCredential>(
                 app,
                 _path,
-                "rkd-scalar-login");
+                _rateLimitPolicy ?? DefaultPolicyName);
         }
 
         private static void ValidatePath(string path)
