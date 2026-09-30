@@ -159,6 +159,9 @@ namespace Rkd.Scalar.HttpLogging
             if (_options.Filter is not null && !_options.Filter(context))
                 return null;
 
+            // The endpoint is only known after routing: its metadata can still keep the bodies out of the entry.
+            sensitive |= context.GetEndpoint()?.Metadata.GetMetadata<ISensitiveHttpLogMetadata>() is not null;
+
             var exception = unhandled ?? HttpLogItems.GetException(context);
             var connection = context.Connection;
 

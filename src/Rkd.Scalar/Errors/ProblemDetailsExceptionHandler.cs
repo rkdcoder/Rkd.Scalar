@@ -125,12 +125,17 @@ namespace Rkd.Scalar.Errors
                 };
             }
 
-            return new MvcProblemDetails
+            var unexpected = new MvcProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
-                Title = "An unexpected error occurred.",
-                Detail = _includeDetails ? exception.Message : null
+                Title = _options.UnexpectedErrorTitle ?? "An unexpected error occurred.",
+                Detail = _options.UnexpectedErrorDetail ?? (_includeDetails ? exception.Message : null)
             };
+
+            if (_options.UnexpectedErrorCode is { } code)
+                unexpected.Extensions[ProblemCodes.ExtensionName] = code;
+
+            return unexpected;
         }
 
         private static string? SafeDetail(int status) => status switch
