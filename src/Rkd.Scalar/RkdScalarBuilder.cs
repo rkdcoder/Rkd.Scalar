@@ -439,6 +439,22 @@ namespace Rkd.Scalar
         }
 
         /// <summary>
+        /// Configures the <see cref="ApiModuleAttribute"/> controllers, e.g. a route template without the
+        /// <c>api</c> prefix. Not required to use <c>[ApiModule]</c>.
+        /// </summary>
+        /// <param name="configure">Configures <see cref="ApiModuleOptions"/>.</param>
+        /// <example><code>.WithApiModules(o => o.RouteTemplate = "v{version:apiVersion}/[module]/[controller]")</code></example>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithApiModules(Action<ApiModuleOptions> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            configure(_registry.ApiModules);
+
+            return this;
+        }
+
+        /// <summary>
         /// Enables or disables XML documentation comments in the OpenAPI documents (enabled by default).
         /// Requires <c>&lt;GenerateDocumentationFile&gt;true&lt;/GenerateDocumentationFile&gt;</c> in your projects.
         /// </summary>

@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Rkd.Scalar;
 using Rkd.Scalar.Infrastructure;
+using Rkd.Scalar.Modules;
 using Rkd.Scalar.OpenApi.XmlComments;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -36,6 +38,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.AddOperationTransformer<XmlCommentOperationTransformer>();
                 options.AddSchemaTransformer<XmlCommentSchemaTransformer>();
             });
+
+            // Routes of [ApiModule] controllers (global template / versioning-aware default).
+            services.Configure<MvcOptions>(options => options.Conventions.Add(new ApiModuleConvention(registry)));
 
             return new RkdScalarBuilder(services, configuration, registry);
         }

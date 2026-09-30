@@ -23,6 +23,11 @@ namespace Rkd.Scalar.Infrastructure
         public bool XmlComments { get; set; } = true;
 
         /// <summary>
+        /// Global options of <see cref="ApiModuleAttribute"/> controllers.
+        /// </summary>
+        public ApiModuleOptions ApiModules { get; } = new();
+
+        /// <summary>
         /// Options passed to <c>UseRkdScalar</c>. Available once the application pipeline is built.
         /// </summary>
         public RkdScalarOptions Options { get; set; } = new();

@@ -26,7 +26,7 @@ It combines documentation, authentication helpers and security protections into 
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
-- **API versioning integration**
+- **API versioning integration** and **API modules** — `[ApiModule("billing")]` groups controllers by route and Scalar tag
 - **Default authentication scheme** — a plain `[Authorize]` accepts Bearer, Basic and API Key
 - **Per-operation security** — only protected endpoints show the lock in Scalar
 - **JWKS endpoint** — publish your public keys so other services validate your tokens
@@ -337,6 +337,32 @@ builder.AddRkdScalar()
 [Route("api/v{version:apiVersion}/payments")]
 public class PaymentController : ControllerBase { ... }
 ```
+
+## API modules
+
+Group controllers into modules with one attribute: standardized route, one Scalar/OpenAPI tag per module
+and `[ApiController]` behavior included.
+
+```csharp
+[ApiModule("billing")]          // api/v1/billing/invoices — tag "billing"
+[ApiVersion("1.0")]
+public class InvoicesController : ControllerBase { ... }
+
+[ApiModule("billing")]          // api/v1/billing/payments — same "billing" group in Scalar
+[ApiVersion("1.0")]
+public class PaymentsController : ControllerBase { ... }
+```
+
+| Template source                                                  | Example                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------ |
+| Default with `WithVersioning`                                    | `api/v{version:apiVersion}/[module]/[controller]` |
+| Default without versioning                                       | `api/[module]/[controller]`                      |
+| Global: `.WithApiModules(o => o.RouteTemplate = "...")`          | `"v{version:apiVersion}/[module]/[controller]"`  |
+| Per controller: `[ApiModule("x", RouteTemplate = "...")]`        | `"internal/[module]/[controller]"`               |
+
+The template must contain `[module]`; `[controller]` and route parameters work as usual. Other options:
+`Tag` (display name in Scalar, e.g. `[ApiModule("billing", Tag = "Billing & Payments")]`), `Order` and `Name`.
+Module names may have several segments (`"finance/reports"`). Don't combine it with a class-level `[Route]`.
 
 ## Version selector
 
@@ -691,6 +717,7 @@ The section also accepts `{ "Username": "...", "Password": "..." }`. Protection 
 | `WithDefaultAuthenticationScheme()`                                 | Plain `[Authorize]` accepts every enabled scheme               |
 | `WithOperationSecurity()`                                           | Security requirements only on protected operations            |
 | `WithProblemDetails(configure?)`                                    | RFC 9457 errors for exceptions and error responses             |
+| `WithApiModules(configure)`                                         | Global route template of `[ApiModule]` controllers             |
 | `WithLowercaseRouting()`                                            | Lowercase URLs and query strings                               |
 
 ---

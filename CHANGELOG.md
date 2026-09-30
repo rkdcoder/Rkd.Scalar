@@ -22,6 +22,11 @@ removed or changed in a breaking way within a major version (enforced by package
   - always JSON regardless of `Accept`, `Cache-Control: no-store` on exception responses, `499` without
     error logs for aborted requests, same behavior in Development (developer exception page filter);
   - the middleware is registered at the beginning of the pipeline automatically.
+- **API modules**: `[ApiModule("billing")]` groups controllers under a standardized route
+  (`api/v{version:apiVersion}/[module]/[controller]` with versioning, `api/[module]/[controller]` without),
+  uses the module as OpenAPI/Scalar tag (customizable with `Tag`) and applies `[ApiController]`.
+  Templates can be changed globally (`WithApiModules(o => o.RouteTemplate = ...)`) or per controller
+  (`RouteTemplate = ...`), always with the `[module]` token.
 
 ## 2.0.0
 
