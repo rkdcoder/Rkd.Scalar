@@ -18,7 +18,7 @@ It combines documentation, authentication helpers and security protections into 
 Rkd.Scalar integrates:
 
 - **Scalar UI**
-- **OpenAPI generation**
+- **OpenAPI generation** with **XML comments applied automatically** (every API version, no `AddOpenApi` needed)
 - **JWT Bearer authentication** — HMAC secret, **RSA / ECDSA keys**, **OIDC authority (JWKS)** or **async / KMS signing**
 - **API Key authentication**
 - **Basic authentication**
@@ -196,6 +196,59 @@ The three `UseRkdScalar` overloads:
 app.UseRkdScalar();                                                 // "RkdScalar" section (or defaults)
 app.UseRkdScalar("Docs", o => o.ConfigureScalar = s => s.DarkMode = true); // any section + code
 app.UseRkdScalar(new RkdScalarConfiguration { Title = "My API" });      // code only
+```
+
+---
+
+# XML Comments
+
+Your `///` comments show up in the OpenAPI documents and in Scalar **automatically**,
+for every API version. Just enable the documentation file in your API project
+(and in class libraries that hold your models):
+
+```xml
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <NoWarn>$(NoWarn);CS1591</NoWarn>
+</PropertyGroup>
+```
+
+```csharp
+/// <summary>Gets an order.</summary>
+/// <remarks>Only orders of the current tenant are returned.</remarks>
+/// <param name="id">Order identifier.</param>
+/// <response code="200">The order.</response>
+/// <response code="404">Order not found.</response>
+[HttpGet("{id}")]
+public ActionResult<Order> Get(int id) { ... }
+```
+
+| XML tag                         | Where it goes in OpenAPI                        |
+| ------------------------------- | ----------------------------------------------- |
+| `<summary>` (action / handler)  | operation summary                               |
+| `<remarks>`                     | operation description                           |
+| `<param>`                       | parameter or request body description           |
+| `<returns>`                     | success response description                    |
+| `<response code="...">`         | description of that response                    |
+| `<summary>` (class / property)  | schema / property description                   |
+
+Works with controllers and with minimal APIs that use method handlers
+(`app.MapGet("/ping", Handlers.Ping)`); lambdas have no XML comments. Descriptions
+set explicitly (`WithSummary`, `[EndpointSummary]`…) are never overwritten.
+
+> Before 1.2.0 you had to add `builder.Services.AddOpenApi("v1")` (one per version)
+> so the ASP.NET Core source generator would pick up the comments. That line is no
+> longer needed; keeping it is harmless (nothing is duplicated). To turn the
+> feature off: `.WithXmlComments(false)`.
+
+## Your own OpenAPI transformers
+
+Register them once for every document (all versions) with `ConfigureOpenApi`:
+
+```csharp
+builder.AddRkdScalar()
+    .WithVersioning("v1", "v2")
+    .ConfigureOpenApi(options => options.AddDocumentTransformer<FormFileSchemaTransformer>());
 ```
 
 ---
@@ -808,6 +861,8 @@ In `Properties/launchSettings.json`:
 | `WithApiKeyAuth<TValidator>(configure?)` / `WithApiKeyAuth(section, configure?)` | API Key authentication                             |
 | `WithDefaultAuthenticationScheme()`                      | Plain `[Authorize]` accepts every enabled scheme                           |
 | `WithOperationSecurity()`                                | Security requirements only on protected operations                         |
+| `WithXmlComments(enabled)`                               | XML comments in the documents (on by default)                              |
+| `ConfigureOpenApi(configure)`                            | Your own OpenAPI transformers/options for every document                   |
 | `WithLowercaseRouting()`                                 | Lowercase URLs and query strings                                           |
 
 ---

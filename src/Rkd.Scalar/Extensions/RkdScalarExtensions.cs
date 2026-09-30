@@ -1,11 +1,13 @@
 using Asp.Versioning.ApiExplorer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Rkd.Scalar.Builder;
 using Rkd.Scalar.Configuration;
 using Rkd.Scalar.Infrastructure;
+using Rkd.Scalar.OpenApi.XmlComments;
 using Scalar.AspNetCore;
 
 namespace Rkd.Scalar.Extensions
@@ -32,6 +34,14 @@ namespace Rkd.Scalar.Extensions
             var registry = new ScalarFeatureRegistry();
 
             services.AddSingleton(registry);
+
+            // XML comments for every OpenAPI document (see XmlDocumentationProvider for why this is done at runtime).
+            services.AddSingleton<XmlDocumentationProvider>();
+            services.ConfigureAll<OpenApiOptions>(options =>
+            {
+                options.AddOperationTransformer<XmlCommentOperationTransformer>();
+                options.AddSchemaTransformer<XmlCommentSchemaTransformer>();
+            });
 
             return new ScalarBuilder(
                 services,

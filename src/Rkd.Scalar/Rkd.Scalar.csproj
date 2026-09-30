@@ -6,13 +6,13 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
     <Title>Rkd.Scalar</Title>
 
-    <Description>Zero-boilerplate Scalar wrapper for ASP.NET Core. Configures OpenAPI, API Versioning and Authentication (JWT with HMAC, RSA, ECDSA, OIDC/JWKS or async/KMS signing, Basic, API Key) in a few fluent lines, with built-in documentation UI protection, a development login endpoint and configuration-based validators.</Description>
+    <Description>Zero-boilerplate Scalar wrapper for ASP.NET Core. Configures OpenAPI, API Versioning and Authentication (JWT with HMAC, RSA, ECDSA, OIDC/JWKS or async/KMS signing, Basic, API Key) in a few fluent lines, applies XML documentation comments automatically, with built-in documentation UI protection, a development login endpoint and configuration-based validators.</Description>
 
     <PackageTags>scalar;openapi;swagger;api-documentation;aspnetcore;authentication;jwt;rsa;ecdsa;jwks;oidc;api-key;basic-auth;versioning;scalar-ui;minimal-api</PackageTags>
 
@@ -36,7 +36,7 @@
 
     <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>1.0.12</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>1.1.0</PackageValidationBaselineVersion>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>

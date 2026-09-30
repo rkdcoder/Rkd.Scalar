@@ -19,6 +19,11 @@ namespace Rkd.Scalar.Infrastructure
         public bool OperationLevelSecurity { get; set; }
 
         /// <summary>
+        /// When <see langword="true"/> (default), XML documentation comments are applied to the OpenAPI documents.
+        /// </summary>
+        public bool XmlComments { get; set; } = true;
+
+        /// <summary>
         /// Configuration passed to <c>UseRkdScalar</c>. Available once the application pipeline is built.
         /// </summary>
         public RkdScalarConfiguration Configuration { get; set; } = new();

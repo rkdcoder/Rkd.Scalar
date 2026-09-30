@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 1.2.0
+
+### Added
+
+- **XML comments applied automatically** to every OpenAPI document (all API versions):
+  `<summary>`, `<remarks>`, `<param>`, `<returns>` and `<response code>` of controller actions and
+  minimal API handlers, plus `<summary>` of models and their properties. The `.xml` documentation
+  files are read at runtime, so `builder.Services.AddOpenApi("v1")` is no longer needed in the
+  application (keeping it is harmless). Requires `GenerateDocumentationFile` in the API project.
+- `WithXmlComments(bool)` to turn the feature off.
+- `ConfigureOpenApi(Action<OpenApiOptions>)` to register your own transformers once for every document.
+
 ## 1.1.0
 
 ### Added
