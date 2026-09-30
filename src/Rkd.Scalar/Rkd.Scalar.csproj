@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>2.1.0</Version>
+    <Version>2.2.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
@@ -36,7 +36,7 @@
 
     <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>2.0.0</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>2.1.0</PackageValidationBaselineVersion>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>

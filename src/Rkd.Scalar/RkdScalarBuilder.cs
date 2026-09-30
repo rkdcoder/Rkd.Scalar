@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +12,7 @@ using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Security.Configuration;
 using Rkd.Scalar.Security.Contracts;
 using Rkd.Scalar.Security.Wrappers;
+using MvcJsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
 
 namespace Rkd.Scalar
 {
@@ -402,6 +406,67 @@ namespace Rkd.Scalar
             configure?.Invoke(options);
 
             RegisterFeature(new ProblemDetailsFeature(options));
+
+            return this;
+        }
+
+        #endregion
+
+        #region JSON
+
+        /// <summary>
+        /// Applies the same JSON naming policy everywhere: controller responses (MVC), minimal APIs, the OpenAPI
+        /// schemas shown and sent by Scalar, dictionary keys and model validation error names.
+        /// </summary>
+        /// <param name="namingPolicy">For example <see cref="JsonNamingPolicy.SnakeCaseLower"/> or <see cref="JsonNamingPolicy.CamelCase"/>.</param>
+        /// <param name="applyToDictionaryKeys">Also applies the policy to dictionary keys. Defaults to <see langword="true"/>.</param>
+        /// <remarks>
+        /// ASP.NET Core keeps two independent JSON settings — <c>AddJsonOptions</c> (controllers) and
+        /// <c>ConfigureHttpJsonOptions</c> (minimal APIs and OpenAPI) — so configuring only one of them makes the
+        /// documentation disagree with the real payloads. This method configures both.
+        /// </remarks>
+        /// <example><code>.WithJsonNaming(JsonNamingPolicy.SnakeCaseLower)   // unit_price, created_at…</code></example>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithJsonNaming(JsonNamingPolicy namingPolicy, bool applyToDictionaryKeys = true)
+        {
+            ArgumentNullException.ThrowIfNull(namingPolicy);
+
+            ConfigureJson(json =>
+            {
+                json.PropertyNamingPolicy = namingPolicy;
+
+                if (applyToDictionaryKeys)
+                    json.DictionaryKeyPolicy = namingPolicy;
+            });
+
+            // Validation errors are keyed by the JSON names ("unit_price") instead of the C# names ("UnitPrice").
+            Services.Configure<MvcOptions>(options =>
+                options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider(namingPolicy)));
+
+            return this;
+        }
+
+        /// <summary>
+        /// Configures the JSON serializer of controllers (MVC) and of minimal APIs / OpenAPI at once, so responses,
+        /// requests and the schemas documented in Scalar always match.
+        /// </summary>
+        /// <param name="configure">Configures <see cref="JsonSerializerOptions"/>; runs once for each of the two settings.</param>
+        /// <example>
+        /// <code>
+        /// .ConfigureJson(json =>
+        /// {
+        ///     json.Converters.Add(new JsonStringEnumConverter());
+        ///     json.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        /// })
+        /// </code>
+        /// </example>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder ConfigureJson(Action<JsonSerializerOptions> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            Services.ConfigureHttpJsonOptions(options => configure(options.SerializerOptions));
+            Services.Configure<MvcJsonOptions>(options => configure(options.JsonSerializerOptions));
 
             return this;
         }
