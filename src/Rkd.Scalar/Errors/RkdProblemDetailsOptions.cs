@@ -128,6 +128,31 @@ namespace Rkd.Scalar
         }
 
         /// <summary>
+        /// Sets the <c>code</c>, <c>detail</c> and <c>title</c> of the <c>500</c> written for unexpected exceptions
+        /// (not mapped, not <see cref="ProblemException"/>), e.g. in the language of your clients. The exception is still
+        /// logged as <c>Error</c>, and <see cref="IncludeExceptionDetails"/> still adds the <c>exception</c> member.
+        /// </summary>
+        /// <param name="code">Machine-readable code (e.g. <c>UNEXPECTED_ERROR</c>).</param>
+        /// <param name="detail">Explanation sent to the client (never the exception message).</param>
+        /// <param name="title">Title. Defaults to <c>An unexpected error occurred.</c></param>
+        /// <returns>The same options, for chaining.</returns>
+        /// <example><code>options.UnexpectedError("ERRO_INESPERADO", "Ocorreu um erro inesperado. Informe o traceId ao suporte.", "Erro inesperado");</code></example>
+        public RkdProblemDetailsOptions UnexpectedError(string code, string? detail = null, string? title = null)
+        {
+            UnexpectedErrorCode = ProblemCodes.Validate(code);
+            UnexpectedErrorDetail = detail;
+            UnexpectedErrorTitle = title;
+
+            return this;
+        }
+
+        internal string? UnexpectedErrorCode { get; private set; }
+
+        internal string? UnexpectedErrorDetail { get; private set; }
+
+        internal string? UnexpectedErrorTitle { get; private set; }
+
+        /// <summary>
         /// Sets the <c>code</c>, <c>detail</c> and <c>title</c> of the problems written for body-less
         /// <paramref name="statusCode"/> responses (unknown routes, 405, 415, 401/403 from authorization…).
         /// </summary>

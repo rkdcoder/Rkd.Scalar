@@ -505,6 +505,7 @@ are still `500`.
 | `IncludeDefaultCodes`     | `true`                | Adds `code` to problems without one (`VALIDATION_ERROR`, `NOT_FOUND`…)   |
 | `DocumentErrorResponses`  | `true`                | Documents 400/401/403/429/500 problem responses in OpenAPI / Scalar      |
 | `Customize`               | —                     | Adds or changes members of every problem (e.g. `service`, `tenant`)      |
+| `UnexpectedError(code, detail, title)` | —        | `code`, `detail` and `title` of the `500` for unexpected exceptions      |
 
 ```csharp
 .WithProblemDetails(options =>
@@ -513,6 +514,18 @@ are still `500`.
         context.ProblemDetails.Extensions["service"] = "orders-api";
 });
 ```
+
+Unexpected errors in the language of your clients, without mapping `Exception`:
+
+```csharp
+.WithProblemDetails(options => options.UnexpectedError(
+    code: "ERRO_INESPERADO",
+    detail: "Ocorreu um erro inesperado. Informe o traceId ao suporte.",
+    title: "Erro inesperado"));
+```
+
+The exception message is never sent (in Development, `IncludeExceptionDetails` still adds the `exception` member)
+and the error is still logged as `Error`.
 
 Logging: unexpected errors (5xx) are logged as `Error` with the exception; mapped client errors (4xx)
 as `Information`; aborted requests as `Debug`. The middleware is placed at the beginning of the pipeline
@@ -575,6 +588,21 @@ problem `code`, e.g. `CUSTOMER_NOT_FOUND`), `Exception` (unhandled 5xx only), `U
   `WithApiKeyAuth` header are redacted, as the query parameters `access_token`, `token`, `api_key`, `password`…
   Bodies of `SensitivePaths` and of the `WithJwtLoginEndpoint` route are never stored.
 - **Scalar UI and OpenAPI documents** are not logged (`ExcludeDocumentation`).
+
+## Sensitive endpoints
+
+Routes a path prefix cannot describe (`POST api/v1/systems/{id}/keys`, which returns a key in clear text) are marked
+on the endpoint — the entry is kept, the bodies are never stored:
+
+```csharp
+[HttpPost("{id}/keys"), SensitiveHttpLog]          // controller or action
+public ApiKeyCreated CreateKey(int id) => ...;
+
+app.MapPost("/systems/{id}/keys", CreateKey).WithSensitiveHttpLog();   // minimal API (or a MapGroup)
+```
+
+The endpoint is known only after routing, so the captured bodies are discarded before the entry is queued: they
+never reach a sink.
 
 ## Options
 

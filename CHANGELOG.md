@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.6.0
+
+### Added
+
+- `[SensitiveHttpLog]` (controllers and actions), `.WithSensitiveHttpLog()` (minimal API endpoints and groups) and
+  `ISensitiveHttpLogMetadata`: the HTTP log keeps the entry without its request and response bodies, for routes a
+  `SensitivePaths` prefix cannot describe (e.g. `POST api/v1/systems/{id}/keys`).
+- `RkdProblemDetailsOptions.UnexpectedError(code, detail, title)`: custom `code`, `detail` and `title` of the `500`
+  written for unexpected exceptions, without `Map<Exception>`; the exception is still logged as `Error` and
+  `IncludeExceptionDetails` still adds its details in Development.
+
 ## 2.5.1
 
 ### Fixed
