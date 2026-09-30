@@ -4,6 +4,36 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.0.0
+
+Major version with breaking changes — see [MIGRATION.md](MIGRATION.md).
+
+### Changed (breaking)
+
+- **Single namespace**: every public type lives in `Rkd.Scalar`; `AddRkdScalar` / `UseRkdScalar` moved to
+  `Microsoft.Extensions.DependencyInjection`, `Microsoft.Extensions.Hosting` and `Microsoft.AspNetCore.Builder`.
+- **Renames**: `ScalarBuilder` → `RkdScalarBuilder`, `RkdScalarConfiguration` → `RkdScalarOptions`,
+  `WithDefaultJwtLogin` → `WithJwtLoginEndpoint` (with defaults), `JwtTokenResult` → `JwtToken`,
+  `GenerateToken(Async)` → `CreateTokenAsync`, `JwtLoginResponse.FromResult` → `FromToken`.
+- **Validators** return `CredentialValidationResult` (success with identity, or failure with a reason);
+  `ClaimsIdentity` converts implicitly.
+- **JWT options**: `JwtSettings` merged into `JwtOptions` (bindable directly); default section `Jwt`;
+  `ExpirationInMinutes` (default 60) and `ClockSkewInSeconds` (default 30); `ValidateNotBefore` removed
+  (`nbf` always written); `Issuer` / `Audience` validated at startup.
+- **Standard JWT claims**: tokens use `sub`, `name`, `role`, `email`… and carry `iat`, `nbf` and `jti`;
+  validation maps them back to `ClaimTypes.*`. `UseStandardClaimNames = false` keeps the 1.x format.
+- **Login endpoint**: 401 responses are `application/problem+json` with the failure reason.
+- `UseRkdScalar` takes `Action<RkdScalarOptions>` (and an optional section name) and returns `WebApplication`.
+- Implementation details are no longer public: `BasicAuthParser`, `ScalarUiAuthMiddleware`,
+  `ScalarUiProtectionOptions`, `IUiCredentialValidator`, `JwtTokenService`; `JwtLoginRequest` removed.
+- Default Scalar title is `API Documentation` (no trailing dot).
+
+### Added
+
+- `JwtToken.TokenId`, `IssuedAt` and `ExpiresAt` (`DateTimeOffset`) for auditing and revocation.
+- `CredentialValidationResult.Success(params IEnumerable<Claim>)` shortcut.
+- `TimeProvider` support in the token service (registered `TimeProvider` is used when present).
+
 ## 1.3.0
 
 ### Added

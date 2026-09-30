@@ -1,7 +1,7 @@
+using Rkd.Scalar.Security.Jwt;
 using FluentAssertions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Rkd.Scalar.Security.Jwt;
 using Rkd.Scalar.Tests.Helpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -11,12 +11,10 @@ namespace Rkd.Scalar.Tests.Unit
 {
     public class JwtKeyMaterialTests
     {
-        private static JwtOptions Options(Action<JwtOptions> configure)
-        {
-            var options = new JwtOptions { Issuer = "issuer", Audience = "audience" };
-            configure(options);
-            return options;
-        }
+        private static JwtOptions Options(Action<JwtOptions> configure) => TestJwt.Options(configure);
+
+        private static async Task<string> TokenAsync(JwtOptions options, ClaimsIdentity? identity = null) =>
+            (await TestJwt.Service(options).CreateTokenAsync(identity ?? new ClaimsIdentity(), cancellationToken: TestContext.Current.CancellationToken)).AccessToken;
 
         private static async Task<TokenValidationResult> ValidateAsync(string token, JwtOptions options)
         {
@@ -92,13 +90,13 @@ namespace Rkd.Scalar.Tests.Unit
             var (privatePem, publicPem) = TestKeys.Rsa();
 
             var signing = Options(o => o.PrivateKeyPem = privatePem);
-            var token = new JwtTokenService(signing).GenerateToken(new ClaimsIdentity([new Claim("sub", "42")]));
+            var token = await TokenAsync(signing, new ClaimsIdentity([new Claim("sub", "42")]));
 
-            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token.Token);
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
             jwt.Header.Alg.Should().Be(SecurityAlgorithms.RsaSha256);
             jwt.Header.Kid.Should().NotBeNullOrEmpty();
 
-            var result = await ValidateAsync(token.Token, Options(o => o.PublicKeyPem = publicPem));
+            var result = await ValidateAsync(token, Options(o => o.PublicKeyPem = publicPem));
             result.IsValid.Should().BeTrue(result.Exception?.Message);
         }
 
@@ -111,13 +109,12 @@ namespace Rkd.Scalar.Tests.Unit
 
             try
             {
-                var token = new JwtTokenService(Options(o => o.PrivateKeyPath = path))
-                    .GenerateToken(new ClaimsIdentity([new Claim("sub", "42")]));
+                var token = await TokenAsync(Options(o => o.PrivateKeyPath = path), new ClaimsIdentity([new Claim("sub", "42")]));
 
-                new JwtSecurityTokenHandler().ReadJwtToken(token.Token).Header.Alg
+                new JwtSecurityTokenHandler().ReadJwtToken(token).Header.Alg
                     .Should().Be(SecurityAlgorithms.EcdsaSha256);
 
-                var result = await ValidateAsync(token.Token, Options(o => o.PublicKeyPem = publicPem));
+                var result = await ValidateAsync(token, Options(o => o.PublicKeyPem = publicPem));
                 result.IsValid.Should().BeTrue(result.Exception?.Message);
             }
             finally
@@ -139,18 +136,18 @@ namespace Rkd.Scalar.Tests.Unit
         }
 
         [Fact]
-        public void ExplicitAlgorithmAndKeyId_ShouldBeUsed()
+        public async Task ExplicitAlgorithmAndKeyId_ShouldBeUsed()
         {
             var (privatePem, _) = TestKeys.Rsa();
 
-            var token = new JwtTokenService(Options(o =>
+            var token = await TokenAsync(Options(o =>
             {
                 o.PrivateKeyPem = privatePem;
                 o.Algorithm = SecurityAlgorithms.RsaSsaPssSha256;
                 o.KeyId = "key-2026";
-            })).GenerateToken(new ClaimsIdentity());
+            }));
 
-            var header = new JwtSecurityTokenHandler().ReadJwtToken(token.Token).Header;
+            var header = new JwtSecurityTokenHandler().ReadJwtToken(token).Header;
             header.Alg.Should().Be(SecurityAlgorithms.RsaSsaPssSha256);
             header.Kid.Should().Be("key-2026");
         }
@@ -184,15 +181,14 @@ namespace Rkd.Scalar.Tests.Unit
             var (oldPrivate, _) = TestKeys.Rsa();
             var (newPrivate, _) = TestKeys.Rsa();
 
-            var oldToken = new JwtTokenService(Options(o => o.PrivateKeyPem = oldPrivate))
-                .GenerateToken(new ClaimsIdentity());
+            var oldToken = await TokenAsync(Options(o => o.PrivateKeyPem = oldPrivate));
 
             using var oldRsa = RSA.Create();
             oldRsa.ImportFromPem(oldPrivate);
             var oldKeyPublic = new RsaSecurityKey(oldRsa.ExportParameters(false));
-            oldKeyPublic.KeyId = new JwtSecurityTokenHandler().ReadJwtToken(oldToken.Token).Header.Kid;
+            oldKeyPublic.KeyId = new JwtSecurityTokenHandler().ReadJwtToken(oldToken).Header.Kid;
 
-            var result = await ValidateAsync(oldToken.Token, Options(o =>
+            var result = await ValidateAsync(oldToken, Options(o =>
             {
                 o.PrivateKeyPem = newPrivate;
                 o.ValidationKeys.Add(oldKeyPublic);

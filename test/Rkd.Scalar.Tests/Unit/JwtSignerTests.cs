@@ -1,7 +1,7 @@
+using Rkd.Scalar.Security.Jwt;
 using FluentAssertions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Rkd.Scalar.Security.Jwt;
 using Rkd.Scalar.Tests.Helpers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -50,27 +50,26 @@ namespace Rkd.Scalar.Tests.Unit
                 Audience = "audience",
                 PublicKeyPem = publicPem,
                 KeyId = "kms-key-1",
-                ValidateNotBefore = true,
-                Expiration = TimeSpan.FromMinutes(5)
+                ExpirationInMinutes = 5
             };
 
-            var service = new JwtTokenService(options, signer);
+            var service = TestJwt.Service(options, signer);
 
-            var result = await service.GenerateTokenAsync(
+            var result = await service.CreateTokenAsync(
                 new ClaimsIdentity([new Claim("sub", "42")]),
                 [new Claim("tenant", "acme")],
                 TestContext.Current.CancellationToken);
 
             signer.Calls.Should().Be(1);
-            result.ExpiresAtUtc.Should().BeCloseTo(DateTime.UtcNow.AddMinutes(5), TimeSpan.FromSeconds(5));
+            result.ExpiresAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddMinutes(5), TimeSpan.FromSeconds(5));
 
-            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.AccessToken);
             jwt.Header.Alg.Should().Be("RS256");
             jwt.Header.Kid.Should().Be("kms-key-1");
             jwt.Claims.Should().Contain(c => c.Type == "tenant" && c.Value == "acme");
             jwt.Payload.NotBefore.Should().NotBeNull();
 
-            var validation = await new JsonWebTokenHandler().ValidateTokenAsync(result.Token, new TokenValidationParameters
+            var validation = await new JsonWebTokenHandler().ValidateTokenAsync(result.AccessToken, new TokenValidationParameters
             {
                 ValidIssuer = "issuer",
                 ValidAudience = "audience",
@@ -81,31 +80,15 @@ namespace Rkd.Scalar.Tests.Unit
         }
 
         [Fact]
-        public void GenerateToken_WithoutSigningKey_ShouldExplain()
+        public async Task CreateTokenAsync_WithoutSigningKey_ShouldExplain()
         {
             var (_, publicPem) = TestKeys.Rsa();
 
-            var service = new JwtTokenService(new JwtOptions { PublicKeyPem = publicPem });
+            var service = TestJwt.Service(TestJwt.Options(o => o.PublicKeyPem = publicPem));
 
-            var act = () => service.GenerateToken(new ClaimsIdentity());
+            var act = () => service.CreateTokenAsync(new ClaimsIdentity(), cancellationToken: TestContext.Current.CancellationToken);
 
-            act.Should().Throw<InvalidOperationException>().WithMessage("No JWT signing key*");
-        }
-
-        private sealed class LegacyTokenService : IJwtTokenService
-        {
-            public JwtTokenResult GenerateToken(ClaimsIdentity identity, IEnumerable<Claim>? additionalClaims = null) =>
-                new() { Token = "legacy", ExpiresAtUtc = DateTime.UtcNow };
-        }
-
-        [Fact]
-        public async Task ExistingImplementations_ShouldGetGenerateTokenAsyncForFree()
-        {
-            IJwtTokenService service = new LegacyTokenService();
-
-            var result = await service.GenerateTokenAsync(new ClaimsIdentity(), cancellationToken: TestContext.Current.CancellationToken);
-
-            result.Token.Should().Be("legacy");
+            await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("No JWT signing key*");
         }
     }
 }

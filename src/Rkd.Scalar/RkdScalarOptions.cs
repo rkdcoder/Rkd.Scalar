@@ -1,11 +1,11 @@
 using Scalar.AspNetCore;
 
-namespace Rkd.Scalar.Configuration
+namespace Rkd.Scalar
 {
     /// <summary>
     /// Options applied by <c>UseRkdScalar</c>. Can be bound from the <c>RkdScalar</c> configuration section.
     /// </summary>
-    public sealed class RkdScalarConfiguration
+    public sealed class RkdScalarOptions
     {
         /// <summary>
         /// Route pattern of the OpenAPI documents. Must contain <c>{documentName}</c>.
@@ -20,7 +20,7 @@ namespace Rkd.Scalar.Configuration
         /// <summary>
         /// Title shown by the Scalar UI.
         /// </summary>
-        public string Title { get; set; } = "API Documentation.";
+        public string Title { get; set; } = "API Documentation";
 
         /// <summary>
         /// Scalar UI theme.

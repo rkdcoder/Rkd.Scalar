@@ -36,27 +36,25 @@ namespace Rkd.Scalar.Security.Jwt
             var publicPem = ReadPem(options.PublicKeyPem, options.PublicKeyPath, "PublicKey");
             var hasSecret = !string.IsNullOrEmpty(options.Secret);
             var hasAsymmetricSigningKey = options.SigningKey is not null || privatePem is not null;
-            var hasAuthority =
-                !string.IsNullOrWhiteSpace(options.Authority) ||
-                !string.IsNullOrWhiteSpace(options.MetadataAddress);
+            var hasAuthority = options.HasAuthority;
 
             if (hasSecret && hasAsymmetricSigningKey)
                 throw new InvalidOperationException(
                     "Configure either a JWT Secret (HMAC) or an asymmetric signing key (PrivateKeyPem, PrivateKeyPath or SigningKey), not both.");
 
-            if (hasSecret && options.Secret.Length < 32)
+            if (hasSecret && options.Secret!.Length < 32)
                 throw new InvalidOperationException("JWT secret must be at least 32 characters.");
 
             if (!hasSecret && !hasAsymmetricSigningKey && publicPem is null &&
                 options.ValidationKeys.Count == 0 && !hasAuthority)
                 throw new InvalidOperationException(
-                    "No JWT key configured. Set JwtOptions.Secret (minimum 32 characters), " +
+                    "No JWT key configured. Set Secret (minimum 32 characters), " +
                     "PrivateKeyPem/PrivateKeyPath, PublicKeyPem/PublicKeyPath, SigningKey or Authority.");
 
             SecurityKey? signingKey =
                 options.SigningKey ??
                 (privatePem is not null ? (SecurityKey)ImportPem(privatePem, "PrivateKey") : null) ??
-                (hasSecret ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Secret)) : null);
+                (hasSecret ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.Secret!)) : null);
 
             var validationKeys = new List<SecurityKey>();
 

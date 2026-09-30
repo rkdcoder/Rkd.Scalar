@@ -3,9 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Rkd.Scalar.Extensions;
-using Rkd.Scalar.Security;
-using Rkd.Scalar.Security.Jwt;
 using Rkd.Scalar.Tests.Helpers;
 using System.Net;
 using System.Net.Http.Headers;
@@ -24,7 +21,7 @@ namespace Rkd.Scalar.Tests.Integration
             Secret = new string('s', 32),
             Issuer = "issuer",
             Audience = "audience",
-            Expiration = TimeSpan.FromMinutes(10)
+            ExpirationInMinutes = 10
         };
 
         private static void MapSecure(WebApplication app, string? schemes = null)
@@ -51,7 +48,7 @@ namespace Rkd.Scalar.Tests.Integration
             await using var app = await TestApp.StartAsync(
                 scalar => scalar
                     .WithBearerAuth<TestCredentials, FakeCredentialValidator>(HmacOptions)
-                    .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)),
+                    .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)),
                 app => MapSecure(app, RkdScalarAuthenticationSchemes.Bearer));
 
             var body = await LoginAsync(app.Client);
@@ -73,7 +70,7 @@ namespace Rkd.Scalar.Tests.Integration
         {
             await using var app = await TestApp.StartAsync(scalar => scalar
                 .WithBearerAuth<TestCredentials, FakeCredentialValidator>(HmacOptions)
-                .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)));
+                .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)));
 
             var response = await app.Client.PostAsJsonAsync("/auth/login", new { username = "user", password = "wrong" }, Ct);
 
@@ -85,7 +82,7 @@ namespace Rkd.Scalar.Tests.Integration
         {
             await using var app = await TestApp.StartAsync(scalar => scalar
                 .WithBearerAuth<TestCredentials, FakeCredentialValidator>(HmacOptions)
-                .WithDefaultJwtLogin<TestCredentials>("/auth/login", 2, TimeSpan.FromMinutes(1)));
+                .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 2, TimeSpan.FromMinutes(1)));
 
             await LoginAsync(app.Client);
             await LoginAsync(app.Client);
@@ -110,7 +107,7 @@ namespace Rkd.Scalar.Tests.Integration
                         Audience = "audience",
                         Algorithm = "RS256"
                     })
-                    .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1))
+                    .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1))
                     .WithJwksEndpoint(),
                 app => MapSecure(app, RkdScalarAuthenticationSchemes.Bearer));
 
@@ -158,7 +155,7 @@ namespace Rkd.Scalar.Tests.Integration
                             Audience = "audience"
                         })
                         .WithJwtSigner<Unit.FakeKmsSigner>()
-                        .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1));
+                        .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1));
                 },
                 app => MapSecure(app, RkdScalarAuthenticationSchemes.Bearer));
 
@@ -177,13 +174,13 @@ namespace Rkd.Scalar.Tests.Integration
             await using var app = await TestApp.StartAsync(
                 scalar => scalar
                     .WithBearerAuth<TestCredentials, FakeCredentialValidator>("Auth:Jwt")
-                    .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)),
+                    .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1)),
                 settings: new Dictionary<string, string?>
                 {
                     ["Auth:Jwt:PrivateKeyPem"] = privatePem,
                     ["Auth:Jwt:Issuer"] = "issuer",
                     ["Auth:Jwt:Audience"] = "audience",
-                    ["Auth:Jwt:ExpirationMinutes"] = "15"
+                    ["Auth:Jwt:ExpirationInMinutes"] = "15"
                 });
 
             var body = await LoginAsync(app.Client);
@@ -294,7 +291,7 @@ namespace Rkd.Scalar.Tests.Integration
             await using var app = await TestApp.StartAsync(
                 scalar => scalar
                     .WithBearerAuth<TestCredentials, FakeCredentialValidator>(HmacOptions)
-                    .WithDefaultJwtLogin<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1))
+                    .WithJwtLoginEndpoint<TestCredentials>("/auth/login", 10, TimeSpan.FromMinutes(1))
                     .WithBasicAuth()
                     .WithApiKeyAuth()
                     .WithDefaultAuthenticationScheme(),

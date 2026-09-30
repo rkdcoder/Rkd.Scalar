@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Rkd.Scalar.Infrastructure;
-using Rkd.Scalar.Security;
 using Rkd.Scalar.Security.ApiKey;
 
 namespace Rkd.Scalar.OpenApi

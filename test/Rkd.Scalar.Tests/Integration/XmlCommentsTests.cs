@@ -59,7 +59,7 @@ namespace Rkd.Scalar.Tests.Integration
     {
         private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-        private static Task<TestApp> StartAsync(Action<Rkd.Scalar.Builder.ScalarBuilder>? configure = null) =>
+        private static Task<TestApp> StartAsync(Action<RkdScalarBuilder>? configure = null) =>
             TestApp.StartAsync(
                 scalar =>
                 {

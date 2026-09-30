@@ -1,10 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
+using Rkd.Scalar.Middleware;
+using Rkd.Scalar.Security.Contracts;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Rkd.Scalar.Builder;
-using Rkd.Scalar.Configuration;
-using Rkd.Scalar.Extensions;
-using Rkd.Scalar.Security.Contracts;
 using Rkd.Scalar.Tests.Helpers;
 using FluentAssertions;
 

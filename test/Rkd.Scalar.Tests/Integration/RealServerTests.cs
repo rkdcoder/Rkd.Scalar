@@ -1,8 +1,7 @@
-﻿using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Rkd.Scalar.Configuration;
-using Rkd.Scalar.Extensions;
 using Rkd.Scalar.Tests.Helpers;
 using System.Net;
 
@@ -28,7 +27,7 @@ namespace Rkd.Scalar.Tests.Integration
 
             _app = builder.Build();
 
-            _app.UseRkdScalar(new RkdScalarConfiguration());
+            _app.UseRkdScalar();
 
             await _app.StartAsync();
 

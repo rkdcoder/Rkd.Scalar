@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Rkd.Scalar.Infrastructure;
-using Rkd.Scalar.Security;
 using Rkd.Scalar.Security.ApiKey;
 
 namespace Rkd.Scalar.Features

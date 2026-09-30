@@ -1,4 +1,4 @@
-namespace Rkd.Scalar.Security
+namespace Rkd.Scalar
 {
     /// <summary>
     /// Authentication scheme names registered by Rkd.Scalar.

@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Rkd.Scalar.OpenApi;
-using Rkd.Scalar.Security.Contracts;
 using Rkd.Scalar.Security.Jwt;
+using System.Security.Claims;
 
 namespace Rkd.Scalar.Features
 {
@@ -30,7 +31,7 @@ namespace Rkd.Scalar.Features
             services.AddSingleton(_options);
             services.AddSingleton(keys);
             services.TryAddSingleton<IJwtTokenService>(sp =>
-                new JwtTokenService(_options, sp.GetService<IJwtSigner>(), keys));
+                new JwtTokenService(_options, keys, sp.GetService<IJwtSigner>(), sp.GetService<TimeProvider>()));
 
             services.AddAuthentication()
                 .AddJwtBearer(jwt =>
@@ -43,6 +44,9 @@ namespace Rkd.Scalar.Features
 
                     jwt.RequireHttpsMetadata = _options.RequireHttpsMetadata;
 
+                    jwt.TokenHandlers.Clear();
+                    jwt.TokenHandlers.Add(CreateTokenHandler());
+
                     jwt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
@@ -52,14 +56,17 @@ namespace Rkd.Scalar.Features
                         ValidIssuer = string.IsNullOrEmpty(_options.Issuer) ? null : _options.Issuer,
 
                         ValidateAudience = true,
-                        ValidAudience = string.IsNullOrEmpty(_options.Audience) ? null : _options.Audience,
+                        ValidAudience = _options.Audience,
 
                         ValidAlgorithms = string.IsNullOrWhiteSpace(_options.Algorithm)
                             ? null
                             : new[] { _options.Algorithm },
 
                         ValidateLifetime = true,
-                        ClockSkew = _options.ClockSkew
+                        ClockSkew = _options.ClockSkew,
+
+                        NameClaimType = ClaimTypes.Name,
+                        RoleClaimType = ClaimTypes.Role
                     };
                 });
 
@@ -69,6 +76,20 @@ namespace Rkd.Scalar.Features
             });
         }
 
+        /// <summary>
+        /// Maps the standard claim names (<c>sub</c>, <c>name</c>, <c>role</c>…) back to <see cref="ClaimTypes"/>,
+        /// so the principal looks the same whether the token uses standard or .NET claim names.
+        /// </summary>
+        private static JsonWebTokenHandler CreateTokenHandler()
+        {
+            var handler = new JsonWebTokenHandler { MapInboundClaims = true };
+
+            foreach (var (standard, dotnet) in JwtClaimNames.Inbound)
+                handler.InboundClaimTypeMap[standard] = dotnet;
+
+            return handler;
+        }
+
         public void ConfigureApp(WebApplication app)
         {
         }
@@ -76,14 +97,14 @@ namespace Rkd.Scalar.Features
 
     /// <summary>
     /// JWT Bearer authentication feature with credential validation support
-    /// (required by WithDefaultJwtLogin).
+    /// (required by WithJwtLoginEndpoint).
     /// </summary>
-    internal sealed class BearerAuthFeature<TCredential, TValidator>
+    internal sealed class BearerAuthFeature<TCredentials, TValidator>
         : BearerAuthFeature, IBearerAuthFeature
-        where TCredential : class
-        where TValidator : class, ICredentialValidator<TCredential>
+        where TCredentials : class
+        where TValidator : class, ICredentialValidator<TCredentials>
     {
-        public Type CredentialType => typeof(TCredential);
+        public Type CredentialType => typeof(TCredentials);
 
         public BearerAuthFeature(JwtOptions options)
             : base(options)
@@ -93,7 +114,7 @@ namespace Rkd.Scalar.Features
         public override void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             base.ConfigureServices(services, configuration);
-            services.AddScoped<ICredentialValidator<TCredential>, TValidator>();
+            services.AddScoped<ICredentialValidator<TCredentials>, TValidator>();
         }
     }
 }

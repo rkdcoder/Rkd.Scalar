@@ -1,141 +1,170 @@
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 
 namespace Rkd.Scalar.Security.Jwt
 {
     /// <summary>
     /// Default <see cref="IJwtTokenService"/>. Signs tokens with the key configured in <see cref="JwtOptions"/>
-    /// (HMAC secret, RSA/ECDSA key or <see cref="SecurityKey"/>) or delegates the signature to an <see cref="IJwtSigner"/>.
+    /// or delegates the signature to an <see cref="IJwtSigner"/>.
     /// </summary>
-    public sealed class JwtTokenService : IJwtTokenService
+    internal sealed class JwtTokenService : IJwtTokenService
     {
+        private static readonly JsonWebTokenHandler Handler = new();
+
         private readonly JwtOptions _options;
 
         private readonly IJwtSigner? _signer;
 
-        private readonly Lazy<JwtKeyMaterial> _keys;
+        private readonly JwtKeyMaterial _keys;
 
-        /// <summary>
-        /// Creates a token service that signs with the key configured in <paramref name="options"/>.
-        /// </summary>
-        public JwtTokenService(JwtOptions options)
-            : this(options, signer: null)
-        {
-        }
+        private readonly TimeProvider _time;
 
-        /// <summary>
-        /// Creates a token service that delegates the signature to <paramref name="signer"/> when provided.
-        /// </summary>
-        public JwtTokenService(JwtOptions options, IJwtSigner? signer)
+        public JwtTokenService(JwtOptions options, JwtKeyMaterial keys, IJwtSigner? signer = null, TimeProvider? time = null)
         {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
+            _options = options;
+            _keys = keys;
             _signer = signer;
-            _keys = new Lazy<JwtKeyMaterial>(() => JwtKeyMaterial.Create(options));
+            _time = time ?? TimeProvider.System;
         }
 
-        internal JwtTokenService(JwtOptions options, IJwtSigner? signer, JwtKeyMaterial keys)
-        {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
-            _signer = signer;
-            _keys = new Lazy<JwtKeyMaterial>(keys);
-        }
-
-        /// <inheritdoc />
-        /// <remarks>
-        /// When an <see cref="IJwtSigner"/> is registered this method blocks on the asynchronous signature;
-        /// prefer <see cref="GenerateTokenAsync"/>.
-        /// </remarks>
-        public JwtTokenResult GenerateToken(
-            ClaimsIdentity identity,
-            IEnumerable<Claim>? additionalClaims = null)
-        {
-            if (identity == null)
-                throw new ArgumentNullException(nameof(identity));
-
-            if (_signer is not null)
-                return GenerateWithSignerAsync(identity, additionalClaims, CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-
-            var keys = _keys.Value;
-
-            if (keys.SigningKey is null)
-                throw new InvalidOperationException(
-                    "No JWT signing key is configured. Token issuing requires JwtOptions.Secret, " +
-                    "PrivateKeyPem/PrivateKeyPath, SigningKey or a registered IJwtSigner.");
-
-            var now = DateTime.UtcNow;
-
-            var signingCredentials = new SigningCredentials(
-                keys.SigningKey,
-                keys.SigningAlgorithm);
-
-            var token = new JwtSecurityToken(
-                issuer: _options.Issuer,
-                audience: _options.Audience,
-                claims: BuildClaims(identity, additionalClaims),
-                notBefore: _options.ValidateNotBefore ? now : null,
-                expires: now.Add(_options.Expiration),
-                signingCredentials: signingCredentials
-            );
-
-            var handler = new JwtSecurityTokenHandler();
-
-            var tokenString = handler.WriteToken(token);
-
-            return new JwtTokenResult
-            {
-                Token = tokenString,
-                ExpiresAtUtc = token.ValidTo
-            };
-        }
-
-        /// <inheritdoc />
-        public Task<JwtTokenResult> GenerateTokenAsync(
+        public async Task<JwtToken> CreateTokenAsync(
             ClaimsIdentity identity,
             IEnumerable<Claim>? additionalClaims = null,
             CancellationToken cancellationToken = default)
         {
-            if (identity == null)
-                throw new ArgumentNullException(nameof(identity));
+            ArgumentNullException.ThrowIfNull(identity);
+
+            var claims = identity.Claims.Concat(additionalClaims ?? []).ToList();
+
+            // Whole seconds, like the numeric dates written to the token.
+            var issuedAt = DateTimeOffset.FromUnixTimeSeconds(_time.GetUtcNow().ToUnixTimeSeconds());
+            var expiresAt = issuedAt.Add(_options.Expiration);
+            var tokenId = claims.FirstOrDefault(c => c.Type == "jti")?.Value ?? Guid.NewGuid().ToString("N");
+
+            var payload = BuildPayload(claims, tokenId, issuedAt, expiresAt);
+
+            string accessToken;
 
             if (_signer is not null)
-                return GenerateWithSignerAsync(identity, additionalClaims, cancellationToken);
+            {
+                accessToken = await SignWithSignerAsync(payload, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var key = _keys.SigningKey ?? throw new InvalidOperationException(
+                    "No JWT signing key is configured. Token issuing requires Secret, " +
+                    "PrivateKeyPem/PrivateKeyPath, SigningKey or a registered IJwtSigner.");
 
-            return Task.FromResult(GenerateToken(identity, additionalClaims));
+                accessToken = Handler.CreateToken(payload, new SigningCredentials(key, _keys.SigningAlgorithm));
+            }
+
+            return new JwtToken(accessToken, tokenId, issuedAt, expiresAt);
         }
 
-        private async Task<JwtTokenResult> GenerateWithSignerAsync(
-            ClaimsIdentity identity,
-            IEnumerable<Claim>? additionalClaims,
-            CancellationToken cancellationToken)
+        private string BuildPayload(
+            IReadOnlyList<Claim> claims,
+            string tokenId,
+            DateTimeOffset issuedAt,
+            DateTimeOffset expiresAt)
+        {
+            using var stream = new MemoryStream();
+
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+
+                if (!string.IsNullOrEmpty(_options.Issuer))
+                    writer.WriteString("iss", _options.Issuer);
+
+                if (!string.IsNullOrEmpty(_options.Audience))
+                    writer.WriteString("aud", _options.Audience);
+
+                writer.WriteNumber("iat", issuedAt.ToUnixTimeSeconds());
+                writer.WriteNumber("nbf", issuedAt.ToUnixTimeSeconds());
+                writer.WriteNumber("exp", expiresAt.ToUnixTimeSeconds());
+                writer.WriteString("jti", tokenId);
+
+                var groups = claims
+                    .Select(c => (Name: ClaimName(c.Type), Claim: c))
+                    .Where(c => c.Name != "jti" && !JwtClaimNames.Reserved.Contains(c.Name))
+                    .GroupBy(c => c.Name, StringComparer.Ordinal);
+
+                foreach (var group in groups)
+                {
+                    writer.WritePropertyName(group.Key);
+
+                    var values = group.Select(c => c.Claim).ToList();
+
+                    if (values.Count == 1)
+                    {
+                        WriteValue(writer, values[0]);
+                    }
+                    else
+                    {
+                        writer.WriteStartArray();
+                        values.ForEach(v => WriteValue(writer, v));
+                        writer.WriteEndArray();
+                    }
+                }
+
+                writer.WriteEndObject();
+            }
+
+            return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        private string ClaimName(string type) =>
+            _options.UseStandardClaimNames && JwtClaimNames.Outbound.TryGetValue(type, out var name)
+                ? name
+                : type;
+
+        private static void WriteValue(Utf8JsonWriter writer, Claim claim)
+        {
+            switch (claim.ValueType)
+            {
+                case ClaimValueTypes.Boolean when bool.TryParse(claim.Value, out var boolean):
+                    writer.WriteBooleanValue(boolean);
+                    break;
+
+                case ClaimValueTypes.Integer or ClaimValueTypes.Integer32 or ClaimValueTypes.Integer64
+                    when long.TryParse(claim.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer):
+                    writer.WriteNumberValue(integer);
+                    break;
+
+                case ClaimValueTypes.Double
+                    when double.TryParse(claim.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number):
+                    writer.WriteNumberValue(number);
+                    break;
+
+                default:
+                    writer.WriteStringValue(claim.Value);
+                    break;
+            }
+        }
+
+        private async Task<string> SignWithSignerAsync(string payload, CancellationToken cancellationToken)
         {
             var signer = _signer!;
 
             if (string.IsNullOrWhiteSpace(signer.Algorithm))
                 throw new InvalidOperationException("IJwtSigner.Algorithm must be provided.");
 
-            var now = DateTime.UtcNow;
-
-            var header = new JwtHeader
+            var header = new Dictionary<string, string>
             {
-                [JwtHeaderParameterNames.Alg] = signer.Algorithm,
-                [JwtHeaderParameterNames.Typ] = JwtConstants.HeaderType
+                ["alg"] = signer.Algorithm,
+                ["typ"] = "JWT"
             };
 
             if (!string.IsNullOrWhiteSpace(signer.KeyId))
-                header[JwtHeaderParameterNames.Kid] = signer.KeyId;
+                header["kid"] = signer.KeyId;
 
-            var payload = new JwtPayload(
-                issuer: _options.Issuer,
-                audience: _options.Audience,
-                claims: BuildClaims(identity, additionalClaims),
-                notBefore: _options.ValidateNotBefore ? now : null,
-                expires: now.Add(_options.Expiration));
-
-            var signingInput = header.Base64UrlEncode() + "." + payload.Base64UrlEncode();
+            var signingInput =
+                Base64UrlEncoder.Encode(JsonSerializer.Serialize(header)) + "." +
+                Base64UrlEncoder.Encode(payload);
 
             var signature = await signer
                 .SignAsync(Encoding.ASCII.GetBytes(signingInput), cancellationToken)
@@ -144,23 +173,7 @@ namespace Rkd.Scalar.Security.Jwt
             if (signature is null || signature.Length == 0)
                 throw new InvalidOperationException("IJwtSigner returned an empty signature.");
 
-            return new JwtTokenResult
-            {
-                Token = signingInput + "." + Base64UrlEncoder.Encode(signature),
-                ExpiresAtUtc = payload.ValidTo
-            };
-        }
-
-        private static List<Claim> BuildClaims(
-            ClaimsIdentity identity,
-            IEnumerable<Claim>? additionalClaims)
-        {
-            var claims = identity.Claims.ToList();
-
-            if (additionalClaims != null)
-                claims.AddRange(additionalClaims);
-
-            return claims;
+            return signingInput + "." + Base64UrlEncoder.Encode(signature);
         }
     }
 }

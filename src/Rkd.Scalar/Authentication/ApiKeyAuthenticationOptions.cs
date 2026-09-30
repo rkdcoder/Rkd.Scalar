@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 
-namespace Rkd.Scalar.Security.ApiKey
+namespace Rkd.Scalar
 {
     /// <summary>
     /// Options of the API Key authentication scheme.

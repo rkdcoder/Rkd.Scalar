@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 
-namespace Rkd.Scalar.Security.Jwt
+namespace Rkd.Scalar
 {
     /// <summary>
-    /// OAuth2-style token response returned by the default login endpoint.
+    /// OAuth2-style token response returned by the login endpoint.
     /// Also handy as the response of your own login endpoint.
     /// </summary>
     public sealed class JwtLoginResponse
@@ -20,24 +20,24 @@ namespace Rkd.Scalar.Security.Jwt
         [JsonPropertyName("expires_in")]
         public long ExpiresIn { get; init; }
 
-        /// <summary>UTC instant when the token expires.</summary>
+        /// <summary>When the token expires.</summary>
         [JsonPropertyName("expires_at")]
-        public DateTime ExpiresAt { get; init; }
+        public DateTimeOffset ExpiresAt { get; init; }
 
         /// <summary>
-        /// Creates a response from a <see cref="JwtTokenResult"/>.
+        /// Creates a response from a <see cref="JwtToken"/>.
         /// </summary>
-        public static JwtLoginResponse FromResult(JwtTokenResult result)
+        public static JwtLoginResponse FromToken(JwtToken token)
         {
-            ArgumentNullException.ThrowIfNull(result);
+            ArgumentNullException.ThrowIfNull(token);
 
-            var expiresIn = (long)Math.Max(0, Math.Round((result.ExpiresAtUtc - DateTime.UtcNow).TotalSeconds));
+            var expiresIn = (long)Math.Max(0, Math.Round((token.ExpiresAt - DateTimeOffset.UtcNow).TotalSeconds));
 
             return new JwtLoginResponse
             {
-                AccessToken = result.Token,
+                AccessToken = token.AccessToken,
                 ExpiresIn = expiresIn,
-                ExpiresAt = result.ExpiresAtUtc
+                ExpiresAt = token.ExpiresAt
             };
         }
     }

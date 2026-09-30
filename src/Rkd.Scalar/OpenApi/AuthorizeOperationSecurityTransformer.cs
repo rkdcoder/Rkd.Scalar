@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Rkd.Scalar.Infrastructure;
-using Rkd.Scalar.Security;
 
 namespace Rkd.Scalar.OpenApi
 {
