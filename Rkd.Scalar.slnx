@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Rkd.Scalar.FluentValidation/Rkd.Scalar.FluentValidation.csproj" />
     <Project Path="src/Rkd.Scalar.HttpLogging.SqlServer/Rkd.Scalar.HttpLogging.SqlServer.csproj" />
     <Project Path="src/Rkd.Scalar/Rkd.Scalar.csproj" />
   </Folder>
