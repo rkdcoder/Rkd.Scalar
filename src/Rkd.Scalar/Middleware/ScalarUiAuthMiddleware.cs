@@ -42,7 +42,7 @@ namespace Rkd.Scalar.Middleware
             if (validator == null)
                 return true;
 
-            var identity = await validator.ValidateAsync(credentials);
+            var identity = await validator.ValidateAsync(credentials, context.RequestAborted);
 
             return identity != null;
         }

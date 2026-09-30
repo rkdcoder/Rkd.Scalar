@@ -8,6 +8,23 @@ on:
     paths-ignore:
       - "**/*.md"
 
+  pull_request:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
   build-test-pack-publish:
     runs-on: ubuntu-latest
@@ -15,8 +32,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up .NET Core
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
@@ -24,14 +43,23 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      # Also runs package validation: the build fails if the public API
+      # breaks compared with PackageValidationBaselineVersion.
       - name: Build (Release)
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test
+        run: dotnet test --configuration Release --no-build
 
       - name: Pack NuGet package
-        run: dotnet pack --configuration Release
+        run: dotnet pack src/Rkd.Scalar/Rkd.Scalar.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts/*
 
       - name: Publish to NuGet.org
-        run: dotnet nuget push "src/Rkd.Scalar/bin/Release/*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        run: dotnet nuget push "./artifacts/*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate

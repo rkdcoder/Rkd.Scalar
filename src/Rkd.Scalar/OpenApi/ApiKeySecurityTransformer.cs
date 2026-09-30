@@ -1,43 +1,46 @@
-﻿using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using Rkd.Scalar.Infrastructure;
+using Rkd.Scalar.Security;
+using Rkd.Scalar.Security.ApiKey;
 
 namespace Rkd.Scalar.OpenApi
 {
     internal sealed class ApiKeySecurityTransformer : IOpenApiDocumentTransformer
     {
-        private const string SchemeName = "ApiKey";
+        private const string SchemeName = RkdScalarAuthenticationSchemes.ApiKey;
+
+        private readonly ScalarFeatureRegistry _registry;
+
+        private readonly IOptionsMonitor<ApiKeyAuthenticationOptions> _options;
+
+        public ApiKeySecurityTransformer(
+            ScalarFeatureRegistry registry,
+            IOptionsMonitor<ApiKeyAuthenticationOptions> options)
+        {
+            _registry = registry;
+            _options = options;
+        }
 
         public Task TransformAsync(
             OpenApiDocument document,
             OpenApiDocumentTransformerContext context,
             CancellationToken cancellationToken)
         {
-            document.Components ??= new OpenApiComponents();
-            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+            var headerName = _options.Get(SchemeName).HeaderName;
 
-            if (!document.Components.SecuritySchemes.ContainsKey(SchemeName))
-            {
-                document.Components.SecuritySchemes[SchemeName] =
-                    new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.ApiKey,
-                        Name = "X-API-Key",
-                        In = ParameterLocation.Header,
-                        Description = "API Key authentication using X-API-Key header."
-                    };
-            }
-
-            document.Security ??= new List<OpenApiSecurityRequirement>();
-
-            var schemeReference = new OpenApiSecuritySchemeReference(SchemeName);
-
-            if (!document.Security.Any(r => r.ContainsKey(schemeReference)))
-            {
-                document.Security.Add(new OpenApiSecurityRequirement
+            SecuritySchemeDocument.Apply(
+                document,
+                SchemeName,
+                new OpenApiSecurityScheme
                 {
-                    [schemeReference] = new List<string>()
-                });
-            }
+                    Type = SecuritySchemeType.ApiKey,
+                    Name = headerName,
+                    In = ParameterLocation.Header,
+                    Description = $"API Key authentication using {headerName} header."
+                },
+                addGlobalRequirement: !_registry.OperationLevelSecurity);
 
             return Task.CompletedTask;
         }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Rkd.Scalar.Security.Contracts;
@@ -8,15 +8,13 @@ using System.Text.Encodings.Web;
 namespace Rkd.Scalar.Security.ApiKey
 {
     internal sealed class ApiKeyAuthenticationHandler<TValidator>
-        : AuthenticationHandler<AuthenticationSchemeOptions>
+        : AuthenticationHandler<ApiKeyAuthenticationOptions>
         where TValidator : class, ICredentialValidator<ApiKeyCredentials>
     {
-        private const string HeaderName = "X-API-Key";
-
         private readonly TValidator _validator;
 
         public ApiKeyAuthenticationHandler(
-            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            IOptionsMonitor<ApiKeyAuthenticationOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
             TValidator validator)
@@ -27,12 +25,13 @@ namespace Rkd.Scalar.Security.ApiKey
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            if (!Request.Headers.TryGetValue(HeaderName, out var key))
+            if (!Request.Headers.TryGetValue(Options.HeaderName, out var key) ||
+                string.IsNullOrWhiteSpace(key))
                 return AuthenticateResult.NoResult();
 
             var credentials = new ApiKeyCredentials(key!);
 
-            var identity = await _validator.ValidateAsync(credentials);
+            var identity = await _validator.ValidateAsync(credentials, Context.RequestAborted);
 
             if (identity == null)
                 return AuthenticateResult.Fail("Invalid API Key");

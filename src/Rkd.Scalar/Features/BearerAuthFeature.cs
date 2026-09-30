@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Rkd.Scalar.OpenApi;
 using Rkd.Scalar.Security.Contracts;
 using Rkd.Scalar.Security.Jwt;
-using System.Text;
 
 namespace Rkd.Scalar.Features
 {
@@ -20,34 +20,46 @@ namespace Rkd.Scalar.Features
 
         public BearerAuthFeature(JwtOptions options)
         {
-            _options = options;
+            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         public virtual void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
-            ValidateOptions(_options);
+            var keys = JwtKeyMaterial.Create(_options);
 
             services.AddSingleton(_options);
-            services.AddSingleton<IJwtTokenService, JwtTokenService>();
-
-            var key = Encoding.UTF8.GetBytes(_options.Secret);
+            services.AddSingleton(keys);
+            services.TryAddSingleton<IJwtTokenService>(sp =>
+                new JwtTokenService(_options, sp.GetService<IJwtSigner>(), keys));
 
             services.AddAuthentication()
                 .AddJwtBearer(jwt =>
                 {
+                    if (!string.IsNullOrWhiteSpace(_options.Authority))
+                        jwt.Authority = _options.Authority;
+
+                    if (!string.IsNullOrWhiteSpace(_options.MetadataAddress))
+                        jwt.MetadataAddress = _options.MetadataAddress;
+
+                    jwt.RequireHttpsMetadata = _options.RequireHttpsMetadata;
+
                     jwt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        IssuerSigningKeys = keys.ValidationKeys.Count > 0 ? keys.ValidationKeys : null,
 
                         ValidateIssuer = true,
-                        ValidIssuer = _options.Issuer,
+                        ValidIssuer = string.IsNullOrEmpty(_options.Issuer) ? null : _options.Issuer,
 
                         ValidateAudience = true,
-                        ValidAudience = _options.Audience,
+                        ValidAudience = string.IsNullOrEmpty(_options.Audience) ? null : _options.Audience,
+
+                        ValidAlgorithms = string.IsNullOrWhiteSpace(_options.Algorithm)
+                            ? null
+                            : new[] { _options.Algorithm },
 
                         ValidateLifetime = true,
-                        ClockSkew = TimeSpan.Zero
+                        ClockSkew = _options.ClockSkew
                     };
                 });
 
@@ -59,12 +71,6 @@ namespace Rkd.Scalar.Features
 
         public void ConfigureApp(WebApplication app)
         {
-        }
-
-        protected static void ValidateOptions(JwtOptions options)
-        {
-            if (options.Secret.Length < 32)
-                throw new InvalidOperationException("JWT secret must be at least 32 characters.");
         }
     }
 

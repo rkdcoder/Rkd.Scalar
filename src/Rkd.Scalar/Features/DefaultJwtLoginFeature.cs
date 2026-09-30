@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Security.Jwt;
+using System.Globalization;
+using System.Threading.RateLimiting;
 
 namespace Rkd.Scalar.Features
 {
@@ -59,21 +62,30 @@ namespace Rkd.Scalar.Features
             if (_permitLimit is int permitLimit && _window is TimeSpan window)
             {
                 var retryAfterSeconds =
-                    ((int)Math.Ceiling(window.TotalSeconds)).ToString();
+                    ((int)Math.Ceiling(window.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
 
                 services.AddRateLimiter(options =>
                 {
-                    options.AddFixedWindowLimiter(DefaultPolicyName, opt =>
-                    {
-                        opt.PermitLimit = permitLimit;
-                        opt.Window = window;
-                        opt.QueueLimit = 0;
-                    });
+                    // Partitioned per client IP: one abusive client cannot lock everybody else out of the login.
+                    options.AddPolicy(DefaultPolicyName, context =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = permitLimit,
+                                Window = window,
+                                QueueLimit = 0
+                            }));
 
-                    options.OnRejected = (context, token) =>
+                    options.OnRejected ??= (context, token) =>
                     {
-                        context.HttpContext.Response.StatusCode = 429;
-                        context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds;
+                        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                        context.HttpContext.Response.Headers.RetryAfter =
+                            context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                                ? ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture)
+                                : retryAfterSeconds;
+
                         return ValueTask.CompletedTask;
                     };
                 });
@@ -110,7 +122,7 @@ namespace Rkd.Scalar.Features
 
         private static void ValidatePath(string path)
         {
-            if (!path.StartsWith("/"))
+            if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("/"))
                 throw new InvalidOperationException("Login path must start with '/'.");
 
             if (path.Contains(" "))

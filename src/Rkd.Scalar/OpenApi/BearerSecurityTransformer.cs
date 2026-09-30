@@ -1,43 +1,35 @@
-﻿using Microsoft.AspNetCore.OpenApi;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using Rkd.Scalar.Infrastructure;
+using Rkd.Scalar.Security;
 
 namespace Rkd.Scalar.OpenApi
 {
     internal sealed class BearerSecurityTransformer : IOpenApiDocumentTransformer
     {
-        private const string SchemeName = "Bearer";
+        private readonly ScalarFeatureRegistry _registry;
+
+        public BearerSecurityTransformer(ScalarFeatureRegistry registry)
+        {
+            _registry = registry;
+        }
 
         public Task TransformAsync(
             OpenApiDocument document,
             OpenApiDocumentTransformerContext context,
             CancellationToken cancellationToken)
         {
-            document.Components ??= new OpenApiComponents();
-            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-
-            if (!document.Components.SecuritySchemes.ContainsKey(SchemeName))
-            {
-                document.Components.SecuritySchemes[SchemeName] =
-                    new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.Http,
-                        Scheme = "bearer",
-                        BearerFormat = "JWT",
-                        Description = "Enter the JWT token."
-                    };
-            }
-
-            document.Security ??= new List<OpenApiSecurityRequirement>();
-
-            var schemeReference = new OpenApiSecuritySchemeReference(SchemeName);
-
-            if (!document.Security.Any(r => r.ContainsKey(schemeReference)))
-            {
-                document.Security.Add(new OpenApiSecurityRequirement
+            SecuritySchemeDocument.Apply(
+                document,
+                RkdScalarAuthenticationSchemes.Bearer,
+                new OpenApiSecurityScheme
                 {
-                    [schemeReference] = new List<string>()
-                });
-            }
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "Enter the JWT token."
+                },
+                addGlobalRequirement: !_registry.OperationLevelSecurity);
 
             return Task.CompletedTask;
         }
