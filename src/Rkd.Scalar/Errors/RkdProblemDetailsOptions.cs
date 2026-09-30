@@ -42,6 +42,22 @@ namespace Rkd.Scalar
         public bool IncludeInstance { get; set; } = true;
 
         /// <summary>
+        /// Adds a machine-readable <c>code</c> to every problem that has none: <c>VALIDATION_ERROR</c> for validation
+        /// problems and the status reason phrase otherwise (<c>NOT_FOUND</c>, <c>UNAUTHORIZED</c>,
+        /// <c>INTERNAL_SERVER_ERROR</c>…). Explicit codes (<see cref="RkdError"/>, <see cref="ProblemException.Code"/>)
+        /// always win. Defaults to <see langword="true"/>.
+        /// </summary>
+        public bool IncludeDefaultCodes { get; set; } = true;
+
+        /// <summary>
+        /// Documents the problem responses in OpenAPI / Scalar: 400 for operations with parameters or a body,
+        /// 401 and 403 for operations that require authorization, 429 for rate limited operations and 500 for every
+        /// operation; error responses you declare (e.g. <c>[ProducesResponseType(404)]</c>) get the problem schema.
+        /// Defaults to <see langword="true"/>.
+        /// </summary>
+        public bool DocumentErrorResponses { get; set; } = true;
+
+        /// <summary>
         /// Customizes every problem details response (exceptions, status codes, <c>Results.Problem</c>,
         /// <c>ValidationProblem</c>…), e.g. to add extensions such as a tenant or an error catalog link.
         /// </summary>

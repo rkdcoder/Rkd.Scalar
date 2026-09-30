@@ -52,6 +52,40 @@ namespace Rkd.Scalar
         /// <summary>Additional members of the problem details object (e.g. <c>orderId</c>, <c>errors</c>).</summary>
         public IDictionary<string, object?> Extensions { get; } = new Dictionary<string, object?>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Stable, machine-readable error code written as the <c>code</c> member (e.g. <c>CUSTOMER_ALREADY_EXISTS</c>).
+        /// Clients should switch on it instead of on the message. See <see cref="RkdError"/>.
+        /// </summary>
+        public string? Code
+        {
+            get => _code;
+            init => _code = value is null ? null : Errors.ProblemCodes.Validate(value);
+        }
+
+        private readonly string? _code;
+
+        /// <summary>
+        /// Converts the exception into the problem details that will be sent to the client.
+        /// </summary>
+        public Microsoft.AspNetCore.Mvc.ProblemDetails ToProblemDetails()
+        {
+            var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
+            {
+                Status = StatusCode,
+                Title = Title,
+                Detail = Detail,
+                Type = Type
+            };
+
+            foreach (var (key, value) in Extensions)
+                problem.Extensions[key] = value;
+
+            if (Code is not null)
+                problem.Extensions[Errors.ProblemCodes.ExtensionName] = Code;
+
+            return problem;
+        }
+
         /// <summary>Creates a 400 Bad Request problem.</summary>
         public static ProblemException BadRequest(string? detail = null) => new(StatusCodes.Status400BadRequest, detail: detail);
 
