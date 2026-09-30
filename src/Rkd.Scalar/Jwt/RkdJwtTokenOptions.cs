@@ -12,6 +12,15 @@ namespace Rkd.Scalar
         /// </summary>
         public TimeSpan RefreshBeforeExpiration { get; set; } = TimeSpan.FromMinutes(1);
 
+        /// <summary>
+        /// Calls made while handling a request forward that request's <c>Authorization: Bearer</c> header (the user's
+        /// own token), so the other API sees the logged user. A service token is issued only when there is no current
+        /// request or it has no Bearer token (background jobs, anonymous or Basic/API Key requests).
+        /// Defaults to <see langword="false"/>.
+        /// </summary>
+        /// <remarks>The other API must accept those tokens (same issuer, and its audience — see <c>JwtOptions.AdditionalAudiences</c>).</remarks>
+        public bool ForwardIncomingToken { get; set; }
+
         /// <summary>Extra claims written to the token (e.g. <c>scope</c>).</summary>
         public IList<Claim> AdditionalClaims { get; } = new List<Claim>();
     }

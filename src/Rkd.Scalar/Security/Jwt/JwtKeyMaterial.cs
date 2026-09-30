@@ -215,6 +215,15 @@ namespace Rkd.Scalar.Security.Jwt
 
         private static AsymmetricSecurityKey ImportPem(string pem, string optionName)
         {
+            // Private keys: managed decoding first (works under IIS without a user profile), ImportFromPem otherwise.
+            switch (PemPrivateKeyReader.TryImport(pem))
+            {
+                case RSA managedRsa:
+                    return new RsaSecurityKey(managedRsa);
+                case ECDsa managedEcdsa:
+                    return new ECDsaSecurityKey(managedEcdsa);
+            }
+
             var rsa = RSA.Create();
 
             try

@@ -1,42 +1,28 @@
-using System.Text;
-using Microsoft.AspNetCore.WebUtilities;
-
 namespace Rkd.Scalar.Errors
 {
     /// <summary>
-    /// Default machine-readable <c>code</c> of problem details responses.
+    /// Members and default codes of the problem details contract. The names and codes come from Rkd.Problems, the
+    /// client side of the contract, so the server and its clients share one definition.
     /// </summary>
     internal static class ProblemCodes
     {
-        /// <summary>Extension member that carries the code.</summary>
-        public const string ExtensionName = "code";
+        /// <summary>Extension member that carries the code (<c>code</c>).</summary>
+        public const string ExtensionName = Rkd.Problems.ProblemMembers.Code;
 
-        /// <summary>Code of validation problems (<c>ValidationProblemDetails</c> / <c>HttpValidationProblemDetails</c>).</summary>
-        public const string Validation = "VALIDATION_ERROR";
+        /// <summary>Extension member that carries the trace id (<c>traceId</c>).</summary>
+        public const string TraceIdName = Rkd.Problems.ProblemMembers.TraceId;
+
+        /// <summary>Extension member with the validation messages by field (<c>errors</c>).</summary>
+        public const string ErrorsName = Rkd.Problems.ProblemMembers.Errors;
+
+        /// <summary>Code of validation problems (<c>VALIDATION_ERROR</c>).</summary>
+        public const string Validation = Rkd.Problems.ProblemCodes.Validation;
 
         /// <summary>
         /// Derives the code from the status reason phrase: 404 → <c>NOT_FOUND</c>, 429 → <c>TOO_MANY_REQUESTS</c>,
         /// 500 → <c>INTERNAL_SERVER_ERROR</c>. Unknown status codes become <c>HTTP_{status}</c>.
         /// </summary>
-        public static string FromStatus(int statusCode)
-        {
-            var phrase = ReasonPhrases.GetReasonPhrase(statusCode);
-
-            if (string.IsNullOrEmpty(phrase))
-                return $"HTTP_{statusCode}";
-
-            var code = new StringBuilder(phrase.Length);
-
-            foreach (var character in phrase)
-            {
-                if (char.IsLetterOrDigit(character))
-                    code.Append(char.ToUpperInvariant(character));
-                else if (code.Length > 0 && code[^1] != '_')
-                    code.Append('_');
-            }
-
-            return code.ToString().TrimEnd('_');
-        }
+        public static string FromStatus(int statusCode) => Rkd.Problems.ProblemCodes.FromStatus(statusCode);
 
         /// <summary>
         /// Validates a user supplied code: letters, digits, <c>_</c>, <c>-</c> and <c>.</c> only, so it is safe to switch on.

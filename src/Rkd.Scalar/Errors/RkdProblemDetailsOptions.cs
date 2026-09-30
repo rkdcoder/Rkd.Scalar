@@ -148,6 +148,27 @@ namespace Rkd.Scalar
 
         internal string? UnexpectedErrorCode { get; private set; }
 
+        /// <summary>
+        /// Answers a failed call to another API (<see cref="Rkd.Problems.HttpProblemException"/>, thrown by
+        /// <c>EnsureSuccessOrThrowProblemAsync()</c> of Rkd.Problems) with its problem instead of a 500:
+        /// 4xx keep the status, <c>code</c>, <c>title</c>, <c>detail</c> and validation <c>errors</c> of the other API;
+        /// 5xx become <c>502 Bad Gateway</c> without its details. The other API's <c>traceId</c>, status and code go to
+        /// the log (never to the client), so both logs can be correlated.
+        /// </summary>
+        /// <returns>The same options, for chaining.</returns>
+        /// <remarks>
+        /// A 401/403 of the other API is forwarded as is: with <c>ForwardIncomingToken</c> it concerns the user's token.
+        /// Map <see cref="Rkd.Problems.HttpProblemException"/> yourself for another policy.
+        /// </remarks>
+        public RkdProblemDetailsOptions MapUpstreamProblems()
+        {
+            MapsUpstreamProblems = true;
+
+            return this;
+        }
+
+        internal bool MapsUpstreamProblems { get; private set; }
+
         internal string? UnexpectedErrorDetail { get; private set; }
 
         internal string? UnexpectedErrorTitle { get; private set; }

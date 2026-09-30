@@ -16,7 +16,7 @@ namespace Rkd.Scalar.Errors
     /// </summary>
     internal sealed class ProblemDetailsWriter
     {
-        private const string ContentType = "application/problem+json";
+        private const string ContentType = Rkd.Problems.HttpProblem.MediaType;
 
         /// <summary>RFC 9110 links used by ASP.NET Core as default <c>type</c> of each status code.</summary>
         private static readonly Dictionary<int, string> TypeLinks = new()
@@ -65,7 +65,7 @@ namespace Rkd.Scalar.Errors
             if (problem.Type is null && TypeLinks.TryGetValue(problem.Status.Value, out var type))
                 problem.Type = type;
 
-            problem.Extensions.TryAdd("traceId", Activity.Current?.Id ?? context.TraceIdentifier);
+            problem.Extensions.TryAdd(ProblemCodes.TraceIdName, Activity.Current?.Id ?? context.TraceIdentifier);
 
             context.RequestServices.GetService<IOptions<ProblemDetailsOptions>>()?.Value
                 .CustomizeProblemDetails?.Invoke(problemContext);

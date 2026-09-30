@@ -17,7 +17,7 @@ namespace Rkd.Scalar.Features
 {
     internal sealed class ProblemDetailsFeature : IScalarFeature
     {
-        private const string TraceIdName = "traceId";
+        private const string TraceIdName = ProblemCodes.TraceIdName;
 
         private readonly RkdProblemDetailsOptions _options;
 

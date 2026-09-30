@@ -15,7 +15,7 @@ namespace Rkd.Scalar.Errors
     /// </summary>
     internal sealed class ErrorResponsesOperationTransformer : IOpenApiOperationTransformer
     {
-        private const string MediaType = "application/problem+json";
+        private const string MediaType = Rkd.Problems.HttpProblem.MediaType;
 
         private static readonly BindingSource[] InputSources =
         [
@@ -153,8 +153,8 @@ namespace Rkd.Scalar.Errors
             if (existing is OpenApiSchema schema)
             {
                 schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-                schema.Properties.TryAdd("code", Code());
-                schema.Properties.TryAdd("traceId", TraceId());
+                schema.Properties.TryAdd(ProblemCodes.ExtensionName, Code());
+                schema.Properties.TryAdd(ProblemCodes.TraceIdName, TraceId());
             }
         }
 
@@ -167,13 +167,13 @@ namespace Rkd.Scalar.Errors
                 ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Format = "int32", Description = "HTTP status code." },
                 ["detail"] = Text("Explanation specific to this occurrence of the problem."),
                 ["instance"] = Text("Request path where the problem occurred."),
-                ["code"] = Code(),
-                ["traceId"] = TraceId()
+                [ProblemCodes.ExtensionName] = Code(),
+                [ProblemCodes.TraceIdName] = TraceId()
             };
 
             if (validation)
             {
-                properties["errors"] = new OpenApiSchema
+                properties[ProblemCodes.ErrorsName] = new OpenApiSchema
                 {
                     Type = JsonSchemaType.Object,
                     Description = "Validation messages by field.",

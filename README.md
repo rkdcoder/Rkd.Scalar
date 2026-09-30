@@ -414,6 +414,27 @@ Business errors (`404`, `409`, `422`…) depend on your code, so declare them as
 `/// <response code="404">` — and they get the problem schema as `application/problem+json`. Responses you
 declare are never overwritten. Disable with `DocumentErrorResponses = false`.
 
+## Errors of other APIs (MapUpstreamProblems)
+
+With [Rkd.Problems](https://www.nuget.org/packages/Rkd.Problems) (referenced by Rkd.Scalar), a failed call to another
+API throws `HttpProblemException`. `MapUpstreamProblems()` answers with that problem instead of a 500:
+
+```csharp
+builder.AddRkdScalar().WithProblemDetails(o => o.MapUpstreamProblems());
+
+using var response = await http.GetAsync($"orders/{id}", ct);
+await response.EnsureSuccessOrThrowProblemAsync(ct);    // Rkd.Problems
+```
+
+| Other API answered | This API answers                                                                  |
+| ------------------ | --------------------------------------------------------------------------------- |
+| 4xx                | same status, `code`, `title`, `detail` and validation `errors`                    |
+| 5xx                | `502 Bad Gateway` (`code: BAD_GATEWAY`), without its details                      |
+
+The other API's status, code and `traceId` are written to the log (never to the client), so both logs can be
+correlated. A 401/403 of the other API is forwarded as is — with `ForwardIncomingToken` it concerns the user's token;
+map `HttpProblemException` yourself for another policy.
+
 ## Throwing problems directly
 
 ```csharp
@@ -837,6 +858,7 @@ builder.AddRkdScalar().WithBearerAuth<LoginRequest, LoginValidator>();   // "Jwt
 | `ExpirationInMinutes`    | `60`       | Token lifetime                                                  |
 | `ClockSkewInSeconds`     | `30`       | Tolerance when validating `exp` / `nbf`                         |
 | `UseStandardClaimNames`  | `true`     | `sub`, `name`, `role`… instead of the long .NET URIs            |
+| `AdditionalAudiences`    | —          | Extra `aud` values: issued tokens carry `[Audience, ...]` and all are accepted |
 | `Algorithm`              | inferred   | e.g. `PS256`; when set, validation accepts only it              |
 | `KeyId`                  | thumbprint | `kid` header (RSA/ECDSA keys)                                   |
 | `Secret`, `PrivateKeyPem`, `PrivateKeyPath`, `PublicKeyPem`, `PublicKeyPath`, `Authority`, `MetadataAddress`, `RequireHttpsMetadata` | | Key sources, see below |
@@ -860,6 +882,17 @@ their standard names and **mapped back** on validation, so `User.Identity.Name`,
 `User.IsInRole("admin")`, `[Authorize(Roles = "admin")]` and
 `User.FindFirst(ClaimTypes.NameIdentifier)` keep working. Custom claims (`tenant`) are kept as-is.
 
+## Several audiences
+
+A token issued by this application and also sent to another API carries both audiences:
+
+```json
+{ "Jwt": { "Audience": "my-app", "AdditionalAudiences": [ "ia.dataapi" ], "PrivateKeyPath": "..." } }
+```
+
+Issued tokens get `"aud": ["my-app", "ia.dataapi"]` (a plain string when there is only one) and this API accepts
+tokens for any of them. `aud` passed in `additionalClaims` is still ignored — use the option.
+
 ## Signing keys
 
 `JwtOptions` accepts exactly **one** key source:
@@ -876,6 +909,11 @@ their standard names and **mapped back** on validation, so `User.Identity.Name`,
 `ValidationKeys` accepts extra keys during **key rotation**.
 
 ### RSA / ECDSA
+
+PEM private keys (PKCS#8 `PRIVATE KEY`, PKCS#1 `RSA PRIVATE KEY`, SEC1 `EC PRIVATE KEY` on P-256/P-384/P-521) are
+decoded in managed code and imported as parameters, so they also load on **IIS application pools without
+"Load User Profile"** (the default `ApplicationPoolIdentity`), where `ImportFromPem` fails with
+`The system cannot find the file specified`. Other formats (e.g. encrypted keys) use `ImportFromPem`.
 
 ```json
 {
@@ -1030,6 +1068,16 @@ builder.Services.AddHttpClient<VectorStoreClient>(c => c.BaseAddress = new Uri(v
     .AddRkdJwtToken(sp => new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, sp.GetRequiredService<IConfiguration>()["ServiceName"]!)]));
 ```
 
+Calling another API **on behalf of the logged user**: forward the user's own token, and use a service token only when
+there is no user (background jobs, anonymous, Basic or API Key requests):
+
+```csharp
+builder.Services.AddHttpClient<DataApiClient>(c => c.BaseAddress = new Uri(dataApiUrl))
+    .AddRkdJwtToken(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "my-app")]),
+        o => o.ForwardIncomingToken = true);
+```
+
+The other API must accept the user's tokens (same issuer and its audience in `AdditionalAudiences`).
 Requests that already have an `Authorization` header are sent unchanged. `RefreshBeforeExpiration` (default 1 min,
 never more than half the lifetime) controls the renewal.
 

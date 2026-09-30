@@ -70,7 +70,7 @@ namespace Rkd.Scalar.Features
                         ValidIssuer = string.IsNullOrEmpty(_options.Issuer) ? null : _options.Issuer,
 
                         ValidateAudience = true,
-                        ValidAudience = _options.Audience,
+                        ValidAudiences = _options.AllAudiences,
 
                         ValidAlgorithms = string.IsNullOrWhiteSpace(_options.Algorithm)
                             ? null
