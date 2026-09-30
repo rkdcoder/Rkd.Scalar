@@ -128,19 +128,26 @@ namespace Rkd.Scalar
 
         internal TimeSpan ClockSkew => TimeSpan.FromSeconds(ClockSkewInSeconds);
 
+        internal bool HasStaticKeys =>
+            !string.IsNullOrEmpty(Secret) || !string.IsNullOrWhiteSpace(PrivateKeyPem) || !string.IsNullOrWhiteSpace(PrivateKeyPath) ||
+            !string.IsNullOrWhiteSpace(PublicKeyPem) || !string.IsNullOrWhiteSpace(PublicKeyPath) ||
+            SigningKey is not null || ValidationKeys.Count > 0;
+
         internal bool HasAuthority =>
             !string.IsNullOrWhiteSpace(Authority) || !string.IsNullOrWhiteSpace(MetadataAddress);
 
         /// <summary>
         /// Fails fast on settings that would make every token invalid.
         /// </summary>
-        internal void Validate(string source)
+        internal void Validate(string source, bool hasKeyResolver = false)
         {
             if (string.IsNullOrWhiteSpace(Audience))
                 throw new InvalidOperationException($"{source}: 'Audience' is required.");
 
-            if (string.IsNullOrWhiteSpace(Issuer) && !HasAuthority)
-                throw new InvalidOperationException($"{source}: 'Issuer' is required (or configure 'Authority').");
+            // Without Issuer, only resolved keys bound to their issuer can validate tokens: static keys would accept any issuer.
+            if (string.IsNullOrWhiteSpace(Issuer) && !HasAuthority && (!hasKeyResolver || HasStaticKeys))
+                throw new InvalidOperationException(
+                    $"{source}: 'Issuer' is required (or configure 'Authority', or bind each key to its issuer with WithJwtSigningKeyResolver<T>()).");
 
             if (ExpirationInMinutes <= 0)
                 throw new InvalidOperationException($"{source}: 'ExpirationInMinutes' must be greater than zero.");

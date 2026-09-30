@@ -4,6 +4,36 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.4.0
+
+### Added
+
+- `ConfigureJwtBearer(Action<JwtBearerOptions>)`: events (`OnTokenValidated`, `OnMessageReceived`…) and any
+  `JwtBearerOptions` setting without registering `AddJwtBearer` manually; applied after Rkd.Scalar's settings
+  regardless of the call order.
+- `IJwtSigningKeyResolver` + `WithJwtSigningKeyResolver<T>()`: validation keys resolved asynchronously by `kid`
+  (database, key registry), cached (`KeyCacheDuration`), looked up again for unknown `kid`s (key rotation, throttled
+  by `UnknownKeyCacheDuration`) and optionally bound to their issuer (`JwtSigningKey.Issuer`). `Jwt:Issuer` becomes
+  optional when every resolved key has an issuer.
+- Authentication failures with a `ProblemException` (`context.Fail(RkdError.Unauthorized("CODE", "…"))`) put its
+  `code` and `detail` in the 401 problem details.
+- `IProblemLogDetails` and `ProblemException.LogDetails` / `WithLogDetails(...)`: technical details written only to
+  the log. 4xx log entries include the exception when it has an `InnerException`.
+- `RkdProblemDetailsOptions.MapStatus(status, code, detail, title)` and `MapStatus(status, factory)` for body-less
+  error responses (404, 405, 415, 401/403…).
+- Exceeded form limits (`MultipartBodyLengthLimit`…) return `413` with `code: PAYLOAD_TOO_LARGE` (controllers,
+  `ReadFormAsync`, minimal API binding in Development) instead of `500` / a validation error; malformed forms `400`.
+- `IFormFile`, `IFormFileCollection` and `List<IFormFile>` are documented as `format: binary` (file picker in
+  Scalar), and `[FromForm]` models with files as `multipart/form-data`.
+- `IHttpClientBuilder.AddRkdJwtToken(identity)`: outgoing calls authenticated with a cached token from
+  `IJwtTokenService` (renewed before expiration, works with async signers).
+- `RkdScalarOptions.DarkMode` (`"RkdScalar": { "DarkMode": true }`).
+- `[ApiModule]` accepts route parameters (`[ApiModule("tools/{toolId}")]`), left out of the default tag.
+
+### Changed
+
+- `BadHttpRequestException` 413 responses get a generic `detail` outside Development.
+
 ## 2.3.0
 
 ### Added

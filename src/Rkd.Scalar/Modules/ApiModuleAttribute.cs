@@ -35,7 +35,10 @@ namespace Rkd.Scalar
         /// <summary>
         /// Creates the attribute for <paramref name="module"/>.
         /// </summary>
-        /// <param name="module">Module name used in the route and as tag, e.g. <c>billing</c> or <c>finance/reports</c>.</param>
+        /// <param name="module">
+        /// Module name used in the route and as tag, e.g. <c>billing</c>, <c>finance/reports</c> or
+        /// <c>tools/{toolId}</c> (route parameters are allowed; they are left out of the default tag).
+        /// </param>
         public ApiModuleAttribute(string module)
         {
             Module = ApiModuleTemplate.NormalizeModule(module);
@@ -50,7 +53,7 @@ namespace Rkd.Scalar
         /// </summary>
         public string? RouteTemplate { get; set; }
 
-        /// <summary>OpenAPI / Scalar tag. Defaults to <see cref="Module"/>.</summary>
+        /// <summary>OpenAPI / Scalar tag. Defaults to <see cref="Module"/> without its route parameters.</summary>
         public string? Tag { get; set; }
 
         /// <summary>Route order, as in <c>[Route(Order = ...)]</c>.</summary>
@@ -70,7 +73,7 @@ namespace Rkd.Scalar
         public string Template => ApiModuleTemplate.Resolve(RouteTemplate ?? ApiModuleOptions.VersionedTemplate, Module);
 
         /// <summary>The OpenAPI / Scalar tags of the controller.</summary>
-        public IReadOnlyList<string> Tags => [Tag ?? Module];
+        public IReadOnlyList<string> Tags => [Tag ?? ApiModuleTemplate.DefaultTag(Module)];
 
         int? IRouteTemplateProvider.Order => _order;
     }

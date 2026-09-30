@@ -28,7 +28,7 @@ namespace Rkd.Scalar.Security.Jwt
         /// <summary>Keys accepted when validating incoming tokens.</summary>
         public IReadOnlyList<SecurityKey> ValidationKeys { get; }
 
-        public static JwtKeyMaterial Create(JwtOptions options)
+        public static JwtKeyMaterial Create(JwtOptions options, bool allowNoKeys = false)
         {
             ArgumentNullException.ThrowIfNull(options);
 
@@ -46,10 +46,11 @@ namespace Rkd.Scalar.Security.Jwt
                 throw new InvalidOperationException("JWT secret must be at least 32 characters.");
 
             if (!hasSecret && !hasAsymmetricSigningKey && publicPem is null &&
-                options.ValidationKeys.Count == 0 && !hasAuthority)
+                options.ValidationKeys.Count == 0 && !hasAuthority && !allowNoKeys)
                 throw new InvalidOperationException(
                     "No JWT key configured. Set Secret (minimum 32 characters), " +
-                    "PrivateKeyPem/PrivateKeyPath, PublicKeyPem/PublicKeyPath, SigningKey or Authority.");
+                    "PrivateKeyPem/PrivateKeyPath, PublicKeyPem/PublicKeyPath, SigningKey or Authority, " +
+                    "or call WithJwtSigningKeyResolver<T>() before WithBearerAuth.");
 
             SecurityKey? signingKey =
                 options.SigningKey ??

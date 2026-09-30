@@ -1,10 +1,12 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Rkd.Scalar.Errors;
+using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.OpenApi;
 using Rkd.Scalar.Security.Jwt;
 using System.Security.Claims;
@@ -19,22 +21,29 @@ namespace Rkd.Scalar.Features
     {
         private readonly JwtOptions _options;
 
-        public BearerAuthFeature(JwtOptions options)
+        private readonly ScalarFeatureRegistry _registry;
+
+        public BearerAuthFeature(JwtOptions options, ScalarFeatureRegistry registry)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _registry = registry;
         }
 
         public virtual void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
-            var keys = JwtKeyMaterial.Create(_options);
+            var keys = JwtKeyMaterial.Create(_options, allowNoKeys: _registry.HasJwtSigningKeyResolver);
 
             services.AddSingleton(_options);
             services.AddSingleton(keys);
             services.TryAddSingleton<IJwtTokenService>(sp =>
                 new JwtTokenService(_options, keys, sp.GetService<IJwtSigner>(), sp.GetService<TimeProvider>()));
 
-            services.AddAuthentication()
-                .AddJwtBearer(jwt =>
+            services.AddAuthentication().AddJwtBearer();
+
+            // Runs when the options are first used, so every builder call (ConfigureJwtBearer,
+            // WithJwtSigningKeyResolver) is taken into account whatever its order.
+            services.AddOptions<JwtBearerOptions>(RkdScalarAuthenticationSchemes.Bearer)
+                .Configure<IServiceProvider>((jwt, serviceProvider) =>
                 {
                     if (!string.IsNullOrWhiteSpace(_options.Authority))
                         jwt.Authority = _options.Authority;
@@ -44,15 +53,20 @@ namespace Rkd.Scalar.Features
 
                     jwt.RequireHttpsMetadata = _options.RequireHttpsMetadata;
 
+                    // Without Issuer, resolved keys must be bound to an issuer (JwtSigningKey.Issuer).
+                    var issuerFromKeys = string.IsNullOrEmpty(_options.Issuer) && !_options.HasAuthority;
+
                     jwt.TokenHandlers.Clear();
-                    jwt.TokenHandlers.Add(CreateTokenHandler());
+                    jwt.TokenHandlers.Add(new RkdJsonWebTokenHandler(
+                        _registry.HasJwtSigningKeyResolver ? serviceProvider.GetRequiredService<JwtSigningKeyCache>() : null,
+                        requireBoundIssuer: issuerFromKeys));
 
                     jwt.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKeys = keys.ValidationKeys.Count > 0 ? keys.ValidationKeys : null,
 
-                        ValidateIssuer = true,
+                        ValidateIssuer = !issuerFromKeys,
                         ValidIssuer = string.IsNullOrEmpty(_options.Issuer) ? null : _options.Issuer,
 
                         ValidateAudience = true,
@@ -68,6 +82,11 @@ namespace Rkd.Scalar.Features
                         NameClaimType = ClaimTypes.Name,
                         RoleClaimType = ClaimTypes.Role
                     };
+
+                    foreach (var configure in _registry.JwtBearerConfigurations)
+                        configure(jwt);
+
+                    CaptureAuthenticationFailures(jwt);
                 });
 
             services.ConfigureAll<OpenApiOptions>(options =>
@@ -77,17 +96,24 @@ namespace Rkd.Scalar.Features
         }
 
         /// <summary>
-        /// Maps the standard claim names (<c>sub</c>, <c>name</c>, <c>role</c>…) back to <see cref="ClaimTypes"/>,
-        /// so the principal looks the same whether the token uses standard or .NET claim names.
+        /// Keeps a <see cref="ProblemException"/> passed to <c>context.Fail(...)</c> (e.g. in <c>OnTokenValidated</c>)
+        /// so <c>WithProblemDetails()</c> writes its <c>code</c> and <c>detail</c> in the 401 response.
+        /// Composes with your own <c>OnChallenge</c>; not applied when <c>EventsType</c> is used.
         /// </summary>
-        private static JsonWebTokenHandler CreateTokenHandler()
+        private static void CaptureAuthenticationFailures(JwtBearerOptions jwt)
         {
-            var handler = new JsonWebTokenHandler { MapInboundClaims = true };
+            if (jwt.EventsType is not null)
+                return;
 
-            foreach (var (standard, dotnet) in JwtClaimNames.Inbound)
-                handler.InboundClaimTypeMap[standard] = dotnet;
+            jwt.Events ??= new JwtBearerEvents();
 
-            return handler;
+            var onChallenge = jwt.Events.OnChallenge;
+
+            jwt.Events.OnChallenge = context =>
+            {
+                AuthenticationFailures.Capture(context.HttpContext, context.AuthenticateFailure);
+                return onChallenge(context);
+            };
         }
 
         public void ConfigureApp(WebApplication app)
@@ -106,8 +132,8 @@ namespace Rkd.Scalar.Features
     {
         public Type CredentialType => typeof(TCredentials);
 
-        public BearerAuthFeature(JwtOptions options)
-            : base(options)
+        public BearerAuthFeature(JwtOptions options, ScalarFeatureRegistry registry)
+            : base(options, registry)
         {
         }
 

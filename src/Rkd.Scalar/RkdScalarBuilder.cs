@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.AspNetCore.OpenApi;
@@ -192,10 +193,10 @@ namespace Rkd.Scalar
         public RkdScalarBuilder WithBearerAuth(JwtOptions options)
         {
             ArgumentNullException.ThrowIfNull(options);
-            options.Validate(nameof(JwtOptions));
+            options.Validate(nameof(JwtOptions), _registry.HasJwtSigningKeyResolver);
 
             _registry.AddAuthenticationScheme(RkdScalarAuthenticationSchemes.Bearer);
-            RegisterFeature(new BearerAuthFeature(options));
+            RegisterFeature(new BearerAuthFeature(options, _registry));
 
             return this;
         }
@@ -223,10 +224,10 @@ namespace Rkd.Scalar
             where TValidator : class, ICredentialValidator<TCredentials>
         {
             ArgumentNullException.ThrowIfNull(options);
-            options.Validate(nameof(JwtOptions));
+            options.Validate(nameof(JwtOptions), _registry.HasJwtSigningKeyResolver);
 
             _registry.AddAuthenticationScheme(RkdScalarAuthenticationSchemes.Bearer);
-            RegisterFeature(new BearerAuthFeature<TCredentials, TValidator>(options));
+            RegisterFeature(new BearerAuthFeature<TCredentials, TValidator>(options, _registry));
 
             return this;
         }
@@ -257,9 +258,73 @@ namespace Rkd.Scalar
             var options = new JwtOptions();
             section.Bind(options);
 
-            options.Validate($"Configuration section '{sectionName}'");
+            options.Validate($"Configuration section '{sectionName}'", _registry.HasJwtSigningKeyResolver);
 
             return options;
+        }
+
+        /// <summary>
+        /// Customizes the ASP.NET Core <see cref="JwtBearerOptions"/> of the Bearer scheme — events such as
+        /// <c>OnTokenValidated</c>, <c>OnMessageReceived</c> (tokens in the query string for SignalR),
+        /// <c>MapInboundClaims</c>, extra <c>TokenValidationParameters</c>… — without registering <c>AddJwtBearer</c>
+        /// yourself. Runs after Rkd.Scalar's settings, whatever the order of the calls.
+        /// </summary>
+        /// <param name="configure">Changes to apply.</param>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        /// <remarks>
+        /// To reject a token with a message for the client, fail with a <see cref="ProblemException"/>:
+        /// <c>context.Fail(RkdError.Unauthorized("WRONG_ENVIRONMENT", "…"))</c> — <c>WithProblemDetails()</c> writes its
+        /// <c>code</c> and <c>detail</c> in the 401 response. Other failures keep a generic body.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// .ConfigureJwtBearer(jwt => jwt.Events.OnTokenValidated = async context =>
+        /// {
+        ///     if (context.Principal!.FindFirst("env")?.Value != environmentName)
+        ///         context.Fail(RkdError.Unauthorized("WRONG_ENVIRONMENT", "The token was issued for another environment."));
+        /// });
+        /// </code>
+        /// </example>
+        public RkdScalarBuilder ConfigureJwtBearer(Action<JwtBearerOptions> configure)
+        {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            _registry.JwtBearerConfigurations.Add(configure);
+
+            return this;
+        }
+
+        /// <summary>
+        /// Resolves the keys that validate incoming tokens at runtime with <typeparamref name="TResolver"/> — keys
+        /// stored in a database or a key registry, looked up by <c>kid</c>, cached, and looked up again when a token
+        /// carries an unknown <c>kid</c>. Each key can be bound to its issuer (<see cref="JwtSigningKey.Issuer"/>).
+        /// Keys configured in <see cref="JwtOptions"/> keep working.
+        /// </summary>
+        /// <typeparam name="TResolver">Your resolver, registered as scoped (it may use a <c>DbContext</c>).</typeparam>
+        /// <param name="configure">Cache durations.</param>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        /// <remarks>
+        /// When the resolver is the only key source (no <c>Secret</c>, public key or <c>Authority</c>), call it before
+        /// <c>WithBearerAuth</c>. Without <see cref="JwtOptions.Issuer"/>, every resolved key must have an issuer.
+        /// </remarks>
+        public RkdScalarBuilder WithJwtSigningKeyResolver<TResolver>(Action<JwtSigningKeyResolverOptions>? configure = null)
+            where TResolver : class, IJwtSigningKeyResolver
+        {
+            var options = new JwtSigningKeyResolverOptions();
+            configure?.Invoke(options);
+
+            if (options.KeyCacheDuration < TimeSpan.Zero || options.UnknownKeyCacheDuration < TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(configure), "Cache durations cannot be negative.");
+
+            Services.RemoveAll<IJwtSigningKeyResolver>();
+            Services.AddScoped<IJwtSigningKeyResolver, TResolver>();
+            Services.RemoveAll<JwtSigningKeyResolverOptions>();
+            Services.AddSingleton(options);
+            Services.TryAddSingleton<Security.Jwt.JwtSigningKeyCache>();
+
+            _registry.HasJwtSigningKeyResolver = true;
+
+            return this;
         }
 
         /// <summary>
