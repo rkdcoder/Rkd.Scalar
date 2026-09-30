@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.2.0
+
+### Added
+
+- `WithJsonNaming(JsonNamingPolicy)`: one call applies the naming policy to controllers (MVC `JsonOptions`),
+  minimal APIs and the OpenAPI schemas shown by Scalar (`Http.Json.JsonOptions`), dictionary keys and model
+  validation error names.
+- `ConfigureJson(Action<JsonSerializerOptions>)`: any other serializer setting (converters, ignore conditions…)
+  applied to both JSON settings at once.
+
 ## 2.1.0
 
 ### Added

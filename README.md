@@ -26,6 +26,8 @@ It combines documentation, authentication helpers and security protections into 
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
+- **One JSON setting for everything** — `WithJsonNaming(JsonNamingPolicy.SnakeCaseLower)` applies to controllers,
+  minimal APIs, the OpenAPI schemas shown by Scalar and validation errors
 - **API versioning integration** and **API modules** — `[ApiModule("billing")]` groups controllers by route and Scalar tag
 - **Default authentication scheme** — a plain `[Authorize]` accepts Bearer, Basic and API Key
 - **Per-operation security** — only protected endpoints show the lock in Scalar
@@ -316,6 +318,42 @@ automatically, so it also catches errors from other middlewares — no `UseExcep
 you add your own `app.UseExceptionHandler(...)`, yours runs first for the requests it handles.
 In Development, ASP.NET Core's developer exception page still writes its own error log line, but the
 response is the same problem details as in production (plus the exception details).
+
+---
+
+# JSON Naming and Settings
+
+ASP.NET Core keeps **two independent JSON settings**: `AddJsonOptions` (controllers) and
+`ConfigureHttpJsonOptions` (minimal APIs **and the OpenAPI schemas Scalar displays and sends**).
+Configuring only one of them makes the documentation disagree with the real payloads. Rkd.Scalar configures
+both at once:
+
+```csharp
+builder.AddRkdScalar()
+    .WithJsonNaming(JsonNamingPolicy.SnakeCaseLower);   // unit_price, created_at, …
+```
+
+`WithJsonNaming` applies the policy to:
+
+- controller and minimal API responses and requests;
+- the OpenAPI schemas (what Scalar shows and uses in "Test Request");
+- dictionary keys (`applyToDictionaryKeys: false` to keep them as they are);
+- model validation errors — `"errors": { "unit_price": [...] }` instead of `UnitPrice`.
+
+Any other serializer setting goes through `ConfigureJson`, also applied to both:
+
+```csharp
+builder.AddRkdScalar()
+    .WithJsonNaming(JsonNamingPolicy.SnakeCaseLower)
+    .ConfigureJson(json =>
+    {
+        json.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));   // "on_hold"
+        json.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
+```
+
+Problem details members (`type`, `title`, `status`, `detail`, `instance`) and the login response
+(`access_token`, `expires_in`…) keep their standard names regardless of the policy.
 
 ---
 
@@ -718,6 +756,8 @@ The section also accepts `{ "Username": "...", "Password": "..." }`. Protection 
 | `WithOperationSecurity()`                                           | Security requirements only on protected operations            |
 | `WithProblemDetails(configure?)`                                    | RFC 9457 errors for exceptions and error responses             |
 | `WithApiModules(configure)`                                         | Global route template of `[ApiModule]` controllers             |
+| `WithJsonNaming(policy)`                                            | Same JSON naming in controllers, minimal APIs, OpenAPI and validation errors |
+| `ConfigureJson(configure)`                                          | Any JSON setting, applied to controllers and minimal APIs/OpenAPI |
 | `WithLowercaseRouting()`                                            | Lowercase URLs and query strings                               |
 
 ---
