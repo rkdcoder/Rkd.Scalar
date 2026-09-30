@@ -7,8 +7,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Rkd.Problems;
 using Rkd.Scalar.Errors;
 using System.Diagnostics;
+using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 using MvcJsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
 
 namespace Rkd.Scalar.Features
@@ -77,14 +80,37 @@ namespace Rkd.Scalar.Features
             if (_options.IncludeInstance && string.IsNullOrEmpty(problem.Instance))
                 problem.Instance = http.Request.PathBase.Add(http.Request.Path).Value;
 
-            if (_options.IncludeDefaultCodes && !problem.Extensions.ContainsKey(ProblemCodes.ExtensionName))
+            if (_options.IncludeDefaultCodes && !problem.Extensions.ContainsKey(ProblemMembers.Code))
             {
-                problem.Extensions[ProblemCodes.ExtensionName] = problem is HttpValidationProblemDetails
+                problem.Extensions[ProblemMembers.Code] = problem is HttpValidationProblemDetails
                     ? ProblemCodes.Validation
                     : ProblemCodes.FromStatus(problem.Status ?? http.Response.StatusCode);
             }
 
-            problem.Extensions.TryAdd("traceId", Activity.Current?.Id ?? http.TraceIdentifier);
+            var traceId = Activity.Current?.Id ?? http.TraceIdentifier;
+
+            RemovePolicyNamedTraceId(problem, http, traceId);
+            problem.Extensions.TryAdd(ProblemMembers.TraceId, traceId);
+        }
+
+        /// <summary>
+        /// ASP.NET Core names the trace id it adds with the JSON naming policy (<c>trace_id</c> with snake_case), while
+        /// the contract member is always <c>traceId</c>: without this, the response would carry both.
+        /// </summary>
+        private static void RemovePolicyNamedTraceId(Microsoft.AspNetCore.Mvc.ProblemDetails problem, HttpContext http, string traceId)
+        {
+            var json = http.RequestServices.GetService<IOptions<HttpJsonOptions>>()?.Value.SerializerOptions;
+
+            foreach (var policy in (ReadOnlySpan<System.Text.Json.JsonNamingPolicy?>)[json?.PropertyNamingPolicy, json?.DictionaryKeyPolicy])
+            {
+                var name = policy?.ConvertName(ProblemMembers.TraceId);
+
+                if (name is not null && name != ProblemMembers.TraceId &&
+                    problem.Extensions.TryGetValue(name, out var value) && Equals(value, traceId))
+                {
+                    problem.Extensions.Remove(name);
+                }
+            }
         }
     }
 }

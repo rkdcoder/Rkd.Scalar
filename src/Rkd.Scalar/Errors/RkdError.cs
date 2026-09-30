@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Rkd.Problems;
 using Rkd.Scalar.Errors;
 
 namespace Rkd.Scalar
@@ -78,7 +79,7 @@ namespace Rkd.Scalar
             ArgumentNullException.ThrowIfNull(errors);
 
             var problem = Create(statusCode, code, detail, ValidationTitle);
-            problem.Extensions["errors"] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
+            problem.Extensions[ProblemMembers.Errors] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
 
             return problem;
         }

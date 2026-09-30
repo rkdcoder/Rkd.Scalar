@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Rkd.Problems;
 
 namespace Rkd.Scalar
 {
@@ -59,7 +60,7 @@ namespace Rkd.Scalar
         public string? Code
         {
             get => _code;
-            init => _code = value is null ? null : Errors.ProblemCodes.Validate(value);
+            init => _code = value is null ? null : Errors.ProblemCodeValidator.Validate(value);
         }
 
         private readonly string? _code;
@@ -99,7 +100,7 @@ namespace Rkd.Scalar
                 problem.Extensions[key] = value;
 
             if (Code is not null)
-                problem.Extensions[Errors.ProblemCodes.ExtensionName] = Code;
+                problem.Extensions[ProblemMembers.Code] = Code;
 
             return problem;
         }

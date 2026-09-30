@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.5.0
+
+### Added
+
+- The error contract is shared with the clients through the new
+  [Rkd.Problems](https://github.com/rkdcoder/Rkd.Problems) package, now a dependency: the member names (`code`,
+  `traceId`, `errors`…), `VALIDATION_ERROR`, the default codes of each status (`ProblemCodes.FromStatus`) and the
+  `application/problem+json` media type are written from its constants (`ProblemMembers`, `ProblemCodes`,
+  `HttpProblem.MediaType`), and Blazor, WPF, console/MCP and backend clients read the errors with
+  `ReadProblemAsync()` / `EnsureSuccessOrThrowProblemAsync()`.
+
+### Fixed
+
+- With `WithJsonNaming(...)`, problems written through ASP.NET Core's problem details service (exceptions, body-less
+  responses, `RkdResults`) carried the trace id twice — `trace_id` (ASP.NET Core applies the naming policy to it)
+  and `traceId`. Only the contract member, `traceId`, is sent now.
+
 ## 2.4.0
 
 ### Added

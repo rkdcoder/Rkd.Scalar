@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Rkd.Problems;
 using Rkd.Scalar.Errors;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 
@@ -139,13 +140,13 @@ namespace Rkd.Scalar
         /// <example><code>options.MapStatus(404, "ROUTE_NOT_FOUND", "Check the route and the API version (e.g. /api/v1/...).");</code></example>
         public RkdProblemDetailsOptions MapStatus(int statusCode, string code, string? detail = null, string? title = null)
         {
-            code = ProblemCodes.Validate(code);
+            code = ProblemCodeValidator.Validate(code);
 
             return MapStatus(statusCode, _ => new MvcProblemDetails
             {
                 Title = title,
                 Detail = detail,
-                Extensions = { [ProblemCodes.ExtensionName] = code }
+                Extensions = { [ProblemMembers.Code] = code }
             });
         }
 

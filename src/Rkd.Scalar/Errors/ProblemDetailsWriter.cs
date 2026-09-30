@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Rkd.Problems;
 using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 
@@ -16,8 +17,6 @@ namespace Rkd.Scalar.Errors
     /// </summary>
     internal sealed class ProblemDetailsWriter
     {
-        private const string ContentType = "application/problem+json";
-
         /// <summary>RFC 9110 links used by ASP.NET Core as default <c>type</c> of each status code.</summary>
         private static readonly Dictionary<int, string> TypeLinks = new()
         {
@@ -63,7 +62,7 @@ namespace Rkd.Scalar.Errors
             if (problem.Type is null && TypeLinks.TryGetValue(problem.Status.Value, out var type))
                 problem.Type = type;
 
-            problem.Extensions.TryAdd("traceId", Activity.Current?.Id ?? context.TraceIdentifier);
+            problem.Extensions.TryAdd(ProblemMembers.TraceId, Activity.Current?.Id ?? context.TraceIdentifier);
 
             context.RequestServices.GetService<IOptions<ProblemDetailsOptions>>()?.Value
                 .CustomizeProblemDetails?.Invoke(problemContext);
@@ -71,7 +70,7 @@ namespace Rkd.Scalar.Errors
             var json = context.RequestServices.GetService<IOptions<HttpJsonOptions>>()?.Value.SerializerOptions
                 ?? JsonSerializerOptions.Web;
 
-            context.Response.ContentType = ContentType;
+            context.Response.ContentType = HttpProblem.MediaType;
             await JsonSerializer.SerializeAsync(context.Response.Body, problem, json, context.RequestAborted);
         }
     }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.OpenApi;
+using Rkd.Problems;
 
 namespace Rkd.Scalar.Errors
 {
@@ -15,7 +16,7 @@ namespace Rkd.Scalar.Errors
     /// </summary>
     internal sealed class ErrorResponsesOperationTransformer : IOpenApiOperationTransformer
     {
-        private const string MediaType = "application/problem+json";
+        private const string MediaType = HttpProblem.MediaType;
 
         private static readonly BindingSource[] InputSources =
         [
@@ -153,8 +154,8 @@ namespace Rkd.Scalar.Errors
             if (existing is OpenApiSchema schema)
             {
                 schema.Properties ??= new Dictionary<string, IOpenApiSchema>();
-                schema.Properties.TryAdd("code", Code());
-                schema.Properties.TryAdd("traceId", TraceId());
+                schema.Properties.TryAdd(ProblemMembers.Code, Code());
+                schema.Properties.TryAdd(ProblemMembers.TraceId, TraceId());
             }
         }
 
@@ -162,18 +163,18 @@ namespace Rkd.Scalar.Errors
         {
             var properties = new Dictionary<string, IOpenApiSchema>
             {
-                ["type"] = Text("URI reference that identifies the problem type."),
-                ["title"] = Text("Short, human-readable summary of the problem type."),
-                ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Format = "int32", Description = "HTTP status code." },
-                ["detail"] = Text("Explanation specific to this occurrence of the problem."),
-                ["instance"] = Text("Request path where the problem occurred."),
-                ["code"] = Code(),
-                ["traceId"] = TraceId()
+                [ProblemMembers.Type] = Text("URI reference that identifies the problem type."),
+                [ProblemMembers.Title] = Text("Short, human-readable summary of the problem type."),
+                [ProblemMembers.Status] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Format = "int32", Description = "HTTP status code." },
+                [ProblemMembers.Detail] = Text("Explanation specific to this occurrence of the problem."),
+                [ProblemMembers.Instance] = Text("Request path where the problem occurred."),
+                [ProblemMembers.Code] = Code(),
+                [ProblemMembers.TraceId] = TraceId()
             };
 
             if (validation)
             {
-                properties["errors"] = new OpenApiSchema
+                properties[ProblemMembers.Errors] = new OpenApiSchema
                 {
                     Type = JsonSchemaType.Object,
                     Description = "Validation messages by field.",
