@@ -10,8 +10,8 @@ using System.Threading.RateLimiting;
 
 namespace Rkd.Scalar.Features
 {
-    internal sealed class DefaultJwtLoginFeature<TCredential> : IScalarFeature
-        where TCredential : class
+    internal sealed class JwtLoginEndpointFeature<TCredentials> : IScalarFeature
+        where TCredentials : class
     {
         private readonly string _path;
 
@@ -23,7 +23,7 @@ namespace Rkd.Scalar.Features
 
         private const string DefaultPolicyName = "rkd-scalar-login";
 
-        public DefaultJwtLoginFeature(
+        public JwtLoginEndpointFeature(
             string path,
             string rateLimitPolicy)
         {
@@ -31,13 +31,13 @@ namespace Rkd.Scalar.Features
 
             if (string.IsNullOrWhiteSpace(rateLimitPolicy))
                 throw new InvalidOperationException(
-                    "RateLimitPolicy is required for WithDefaultJwtLogin.");
+                    "A rate limiting policy name is required for WithJwtLoginEndpoint.");
 
             _path = path;
             _rateLimitPolicy = rateLimitPolicy;
         }
 
-        public DefaultJwtLoginFeature(
+        public JwtLoginEndpointFeature(
             string path,
             int permitLimit,
             TimeSpan window)
@@ -103,18 +103,19 @@ namespace Rkd.Scalar.Features
             if (bearerFeature == null)
             {
                 throw new InvalidOperationException(
-                    "WithDefaultJwtLogin requires JWT authentication with credential validator. " +
-                    "Call WithBearerAuth<TCredential, TValidator>() before calling WithDefaultJwtLogin(). " +
-                    "The non-generic overload WithBearerAuth(JwtOptions) is validation-only and cannot issue login tokens.");
+                    "WithJwtLoginEndpoint requires JWT authentication with a credential validator: " +
+                    "call WithBearerAuth<TCredentials, TValidator>(). " +
+                    "The non-generic WithBearerAuth overloads are validation-only and cannot issue tokens.");
             }
 
-            if (bearerFeature.CredentialType != typeof(TCredential))
+            if (bearerFeature.CredentialType != typeof(TCredentials))
             {
                 throw new InvalidOperationException(
-                    $"WithDefaultJwtLogin<{typeof(TCredential).Name}> must use the same credential type configured in WithBearerAuth.");
+                    $"WithJwtLoginEndpoint<{typeof(TCredentials).Name}> must use the same credential type configured in " +
+                    $"WithBearerAuth<{bearerFeature.CredentialType.Name}, ...>.");
             }
 
-            JwtLoginEndpoint.MapJwtLogin<TCredential>(
+            JwtLoginEndpoint.Map<TCredentials>(
                 app,
                 _path,
                 _rateLimitPolicy ?? DefaultPolicyName);

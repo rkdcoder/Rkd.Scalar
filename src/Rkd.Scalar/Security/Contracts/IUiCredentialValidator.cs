@@ -1,8 +1,7 @@
-﻿using Rkd.Scalar.Security.Basic;
 
 namespace Rkd.Scalar.Security.Contracts
 {
-    public interface IUiCredentialValidator
+    internal interface IUiCredentialValidator
         : ICredentialValidator<BasicAuthCredentials>
     {
     }

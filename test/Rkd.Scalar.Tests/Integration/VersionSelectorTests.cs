@@ -3,8 +3,6 @@ using Asp.Versioning.Builder;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Rkd.Scalar.Configuration;
-using Rkd.Scalar.Extensions;
 using Rkd.Scalar.Tests.Helpers;
 using System.Net;
 using System.Text.Json;
@@ -28,7 +26,7 @@ namespace Rkd.Scalar.Tests.Integration
 
                     app.MapGet("/api/v{version:apiVersion}/ping", () => "pong").WithApiVersionSet(builder.Build());
                 },
-                useScalar: app => app.UseRkdScalar(new RkdScalarConfiguration { VersionSelector = versionSelector }));
+                useScalar: app => app.UseRkdScalar(o => o.VersionSelector = versionSelector));
 
         private static async Task<JsonElement[]> GetSourcesAsync(TestApp app, string url)
         {

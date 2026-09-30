@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Rkd.Scalar.Configuration;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Middleware;
 
@@ -25,7 +24,7 @@ namespace Rkd.Scalar.Features
 
             var configuration = app.Services
                 .GetRequiredService<ScalarFeatureRegistry>()
-                .Configuration;
+                .Options;
 
             if (!configuration.Enabled)
                 return;

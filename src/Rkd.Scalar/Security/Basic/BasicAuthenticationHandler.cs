@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Rkd.Scalar.Security.Contracts;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
@@ -41,15 +40,15 @@ namespace Rkd.Scalar.Security.Basic
                     "Invalid Basic Authorization header");
             }
 
-            var identity = await _validator.ValidateAsync(credentials, Context.RequestAborted);
+            var result = await _validator.ValidateAsync(credentials, Context.RequestAborted);
 
-            if (identity == null)
+            if (result is not { Succeeded: true })
             {
                 return AuthenticateResult.Fail(
-                    "Invalid username or password");
+                    result?.FailureReason ?? "Invalid username or password");
             }
 
-            var principal = new ClaimsPrincipal(identity);
+            var principal = new ClaimsPrincipal(result.Identity);
 
             var ticket = new AuthenticationTicket(
                 principal,

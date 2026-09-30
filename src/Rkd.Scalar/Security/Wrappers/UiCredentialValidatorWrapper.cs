@@ -1,6 +1,4 @@
-﻿using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
-using System.Security.Claims;
 
 namespace Rkd.Scalar.Security.Wrappers
 {
@@ -15,7 +13,7 @@ namespace Rkd.Scalar.Security.Wrappers
             _inner = inner;
         }
 
-        public Task<ClaimsIdentity?> ValidateAsync(
+        public Task<CredentialValidationResult> ValidateAsync(
             BasicAuthCredentials request,
             CancellationToken cancellationToken = default)
         {

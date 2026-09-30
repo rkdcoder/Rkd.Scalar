@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.OpenApi;
-using Rkd.Scalar.Security;
 using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
 

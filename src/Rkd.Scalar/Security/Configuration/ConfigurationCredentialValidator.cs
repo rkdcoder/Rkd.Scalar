@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -33,27 +32,27 @@ namespace Rkd.Scalar.Security.Configuration
             _authenticationType = authenticationType;
         }
 
-        public Task<ClaimsIdentity?> ValidateAsync(
+        public Task<CredentialValidationResult> ValidateAsync(
             BasicAuthCredentials request,
             CancellationToken cancellationToken = default)
         {
             if (request is null ||
                 string.IsNullOrWhiteSpace(request.Username) ||
                 request.Password is null)
-                return Task.FromResult<ClaimsIdentity?>(null);
+                return Task.FromResult(CredentialValidationResult.Failure());
 
             var valid =
                 _credentials().TryGetValue(request.Username, out var expected) &&
                 FixedTimeEquals(expected, request.Password);
 
             if (!valid)
-                return Task.FromResult<ClaimsIdentity?>(null);
+                return Task.FromResult(CredentialValidationResult.Failure());
 
             var identity = new ClaimsIdentity(
                 new[] { new Claim(ClaimTypes.Name, request.Username) },
                 _authenticationType);
 
-            return Task.FromResult<ClaimsIdentity?>(identity);
+            return Task.FromResult(CredentialValidationResult.Success(identity));
         }
 
         internal static IReadOnlyDictionary<string, string> ReadSection(IConfigurationSection section)

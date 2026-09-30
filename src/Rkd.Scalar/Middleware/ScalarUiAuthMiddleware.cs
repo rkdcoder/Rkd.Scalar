@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Rkd.Scalar.Security.Basic;
 using Rkd.Scalar.Security.Contracts;
@@ -6,7 +6,7 @@ using Rkd.Scalar.Security.Contracts;
 namespace Rkd.Scalar.Middleware
 {
 
-    public class ScalarUiAuthMiddleware
+    internal sealed class ScalarUiAuthMiddleware
     {
         private readonly RequestDelegate _next;
 
@@ -42,9 +42,9 @@ namespace Rkd.Scalar.Middleware
             if (validator == null)
                 return true;
 
-            var identity = await validator.ValidateAsync(credentials, context.RequestAborted);
+            var result = await validator.ValidateAsync(credentials, context.RequestAborted);
 
-            return identity != null;
+            return result is { Succeeded: true };
         }
     }
 }

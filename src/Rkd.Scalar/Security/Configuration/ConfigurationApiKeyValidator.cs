@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Rkd.Scalar.Security.ApiKey;
 using Rkd.Scalar.Security.Contracts;
 using System.Security.Claims;
 
@@ -33,12 +32,12 @@ namespace Rkd.Scalar.Security.Configuration
                     $"Expected \"{sectionName}\": {{ \"client-name\": \"api-key\" }} or \"{sectionName}\": [ \"api-key\" ].");
         }
 
-        public Task<ClaimsIdentity?> ValidateAsync(
+        public Task<CredentialValidationResult> ValidateAsync(
             ApiKeyCredentials request,
             CancellationToken cancellationToken = default)
         {
             if (request is null || string.IsNullOrEmpty(request.Key))
-                return Task.FromResult<ClaimsIdentity?>(null);
+                return Task.FromResult(CredentialValidationResult.Failure());
 
             ApiKeyClient? match = null;
 
@@ -50,13 +49,13 @@ namespace Rkd.Scalar.Security.Configuration
             }
 
             if (match is null)
-                return Task.FromResult<ClaimsIdentity?>(null);
+                return Task.FromResult(CredentialValidationResult.Failure());
 
             var claims = new List<Claim> { new(ClaimTypes.Name, match.Name) };
             claims.AddRange(match.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
-            return Task.FromResult<ClaimsIdentity?>(
-                new ClaimsIdentity(claims, RkdScalarAuthenticationSchemes.ApiKey));
+            return Task.FromResult(CredentialValidationResult.Success(
+                new ClaimsIdentity(claims, RkdScalarAuthenticationSchemes.ApiKey)));
         }
 
         private static List<ApiKeyClient> ReadClients(IConfigurationSection section)

@@ -1,11 +1,11 @@
-namespace Rkd.Scalar.Security.Jwt
+namespace Rkd.Scalar
 {
     /// <summary>
     /// Signs JWT tokens asynchronously, typically delegating to a remote key store
     /// (Azure Key Vault, AWS KMS, Google Cloud KMS, an HSM…) where the private key never leaves the vault.
     /// </summary>
     /// <remarks>
-    /// Register it with <c>WithJwtSigner&lt;TSigner&gt;()</c>. When registered, <see cref="JwtTokenService"/>
+    /// Register it with <c>WithJwtSigner&lt;TSigner&gt;()</c>. When registered, the token service
     /// builds the token header and payload and delegates only the signature to this service.
     /// To validate the tokens, configure the matching public key (<see cref="JwtOptions.PublicKeyPem"/>,
     /// <see cref="JwtOptions.PublicKeyPath"/>, <see cref="JwtOptions.ValidationKeys"/>) or an <see cref="JwtOptions.Authority"/>.

@@ -1,4 +1,3 @@
-using Rkd.Scalar.Configuration;
 using Rkd.Scalar.Features;
 
 namespace Rkd.Scalar.Infrastructure
@@ -24,9 +23,9 @@ namespace Rkd.Scalar.Infrastructure
         public bool XmlComments { get; set; } = true;
 
         /// <summary>
-        /// Configuration passed to <c>UseRkdScalar</c>. Available once the application pipeline is built.
+        /// Options passed to <c>UseRkdScalar</c>. Available once the application pipeline is built.
         /// </summary>
-        public RkdScalarConfiguration Configuration { get; set; } = new();
+        public RkdScalarOptions Options { get; set; } = new();
 
         public void AddAuthenticationScheme(string scheme)
         {

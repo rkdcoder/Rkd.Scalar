@@ -1,10 +1,9 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rkd.Scalar.Builder;
-using Rkd.Scalar.Extensions;
 
 namespace Rkd.Scalar.Tests.Helpers
 {
@@ -26,7 +25,7 @@ namespace Rkd.Scalar.Tests.Helpers
         public IServiceProvider Services => _app.Services;
 
         public static async Task<TestApp> StartAsync(
-            Action<ScalarBuilder> configureScalar,
+            Action<RkdScalarBuilder> configureScalar,
             Action<WebApplication>? configureApp = null,
             IDictionary<string, string?>? settings = null,
             Action<WebApplication>? useScalar = null)

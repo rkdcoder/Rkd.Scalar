@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Rkd.Scalar.Security.Contracts;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
@@ -31,12 +30,12 @@ namespace Rkd.Scalar.Security.ApiKey
 
             var credentials = new ApiKeyCredentials(key!);
 
-            var identity = await _validator.ValidateAsync(credentials, Context.RequestAborted);
+            var result = await _validator.ValidateAsync(credentials, Context.RequestAborted);
 
-            if (identity == null)
-                return AuthenticateResult.Fail("Invalid API Key");
+            if (result is not { Succeeded: true })
+                return AuthenticateResult.Fail(result?.FailureReason ?? "Invalid API Key");
 
-            var principal = new ClaimsPrincipal(identity);
+            var principal = new ClaimsPrincipal(result.Identity);
 
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
 

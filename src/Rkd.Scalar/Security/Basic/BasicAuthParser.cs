@@ -1,9 +1,9 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Text;
 
 namespace Rkd.Scalar.Security.Basic
 {
-    public static class BasicAuthParser
+    internal static class BasicAuthParser
     {
         public static bool TryParse(
             string header,
