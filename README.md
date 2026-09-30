@@ -21,6 +21,8 @@ It combines documentation, authentication helpers and security protections into 
 - **OpenAPI generation** with **XML comments applied automatically** (every version, no extra code)
 - **JWT Bearer authentication** — HMAC secret, **RSA / ECDSA keys**, **OIDC authority (JWKS)** or **async / KMS signing**,
   with **standard claim names** (`sub`, `name`, `role`…) and `iat` / `jti`
+- **Standardized errors (RFC 9457)** — every exception and error response becomes `application/problem+json`,
+  with exception mapping and safe defaults (no internals leaked in production)
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
@@ -208,6 +210,112 @@ builder.AddRkdScalar()
     .WithVersioning("v1", "v2")
     .ConfigureOpenApi(options => options.AddDocumentTransformer<FormFileSchemaTransformer>());
 ```
+
+---
+
+# Standardized Errors (RFC 9457 Problem Details)
+
+One line turns **every** error of the API into the standard
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) format, with the right HTTP status code:
+
+```csharp
+builder.AddRkdScalar().WithProblemDetails();
+```
+
+```http
+HTTP/1.1 404 Not Found
+Content-Type: application/problem+json
+
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Order 42 was not found.",
+  "instance": "/api/v1/orders/42",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+}
+```
+
+What is covered, with no extra code:
+
+| Source                                                   | Result                                                          |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| Unhandled exception                                      | `500`, generic title — **no message or stack trace outside Development** |
+| Mapped exception (`options.Map<T>(...)`)                 | Your status code, title and message                             |
+| `throw new ProblemException(...)`                        | Exactly the status, title, detail, type and extensions you set  |
+| Error responses without body (unknown route, 405, 415, 401/403 from authorization…) | Problem details with the same status code        |
+| `Results.Problem`, `ValidationProblem`, `[ApiController]` model validation | Enriched with `instance` and `traceId`          |
+| Malformed JSON / bad request binding                     | `400` problem details                                           |
+| Client aborted the request                               | `499`, no error log                                             |
+
+The response is always JSON (even for `Accept: text/html`) and the `traceId` matches your logs and
+distributed traces. Responses produced from exceptions discard anything the failed request had written
+and are sent with `Cache-Control: no-store`; for body-less responses, headers such as `WWW-Authenticate`
+are preserved.
+
+## Mapping your exceptions
+
+```csharp
+builder.AddRkdScalar().WithProblemDetails(options =>
+{
+    // status code: the exception message becomes the "detail" for 4xx
+    options.Map<NotFoundException>(StatusCodes.Status404NotFound);
+    options.Map<ConflictException>(StatusCodes.Status409Conflict, title: "Conflict");
+
+    // 5xx never exposes the message unless you say so
+    options.Map<PaymentGatewayException>(StatusCodes.Status502BadGateway, "Payment provider unavailable");
+
+    // full control, including extensions
+    options.Map<BusinessRuleException>(ex => new ProblemDetails
+    {
+        Status = StatusCodes.Status422UnprocessableEntity,
+        Title = "Business rule violated",
+        Detail = ex.Message,
+        Type = "https://errors.mycompany.com/business-rule",
+        Extensions = { ["rule"] = ex.RuleCode }
+    });
+});
+```
+
+Mappings match derived types (the most specific mapping wins). Framework exceptions such as
+`KeyNotFoundException` or `ArgumentException` are **not** mapped by default, because they are often
+thrown by bugs and their messages may contain internal details — map them explicitly if you want to.
+
+## Throwing problems directly
+
+```csharp
+throw ProblemException.NotFound($"Order {id} was not found.");
+
+throw new ProblemException(StatusCodes.Status409Conflict, "Duplicated order", $"Order {id} already exists.")
+{
+    Type = "https://errors.mycompany.com/duplicated-order",
+    Extensions = { ["orderId"] = id }
+};
+```
+
+## Options
+
+| Option                    | Default               | Description                                                              |
+| ------------------------- | --------------------- | ------------------------------------------------------------------------ |
+| `IncludeExceptionDetails` | Development only      | Adds `detail` and an `exception` object (type, message, stack trace) to unexpected errors |
+| `HandleStatusCodes`       | `true`                | Converts body-less 4xx/5xx responses; opt out per endpoint with `[SkipStatusCodePages]` |
+| `IncludeInstance`         | `true`                | Sets `instance` to the request path                                      |
+| `Customize`               | —                     | Adds or changes members of every problem (e.g. `service`, `tenant`)      |
+
+```csharp
+.WithProblemDetails(options =>
+{
+    options.Customize = context =>
+        context.ProblemDetails.Extensions["service"] = "orders-api";
+});
+```
+
+Logging: unexpected errors (5xx) are logged as `Error` with the exception; mapped client errors (4xx)
+as `Information`; aborted requests as `Debug`. The middleware is placed at the beginning of the pipeline
+automatically, so it also catches errors from other middlewares — no `UseExceptionHandler` needed. If
+you add your own `app.UseExceptionHandler(...)`, yours runs first for the requests it handles.
+In Development, ASP.NET Core's developer exception page still writes its own error log line, but the
+response is the same problem details as in production (plus the exception details).
 
 ---
 
@@ -582,6 +690,7 @@ The section also accepts `{ "Username": "...", "Password": "..." }`. Protection 
 | `WithApiKeyAuth<TValidator>(configure?)` / `WithApiKeyAuth(section, configure?)` | API Key authentication                            |
 | `WithDefaultAuthenticationScheme()`                                 | Plain `[Authorize]` accepts every enabled scheme               |
 | `WithOperationSecurity()`                                           | Security requirements only on protected operations            |
+| `WithProblemDetails(configure?)`                                    | RFC 9457 errors for exceptions and error responses             |
 | `WithLowercaseRouting()`                                            | Lowercase URLs and query strings                               |
 
 ---
@@ -597,6 +706,7 @@ builder.AddRkdScalar()
     .WithApiKeyAuth()                                        // "ApiKeys" section
     .WithDefaultAuthenticationScheme()
     .WithOperationSecurity()
+    .WithProblemDetails(o => o.Map<NotFoundException>(StatusCodes.Status404NotFound))
     .WithLowercaseRouting();
 ```
 

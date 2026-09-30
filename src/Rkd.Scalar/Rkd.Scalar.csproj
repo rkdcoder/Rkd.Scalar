@@ -6,15 +6,15 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
     <Title>Rkd.Scalar</Title>
 
-    <Description>Zero-boilerplate Scalar wrapper for ASP.NET Core. Configures OpenAPI, API Versioning and Authentication (JWT with HMAC, RSA, ECDSA, OIDC/JWKS or async/KMS signing, Basic, API Key) in a few fluent lines, applies XML documentation comments automatically, with built-in documentation UI protection, a development login endpoint and configuration-based validators.</Description>
+    <Description>Zero-boilerplate Scalar wrapper for ASP.NET Core. Configures OpenAPI, API Versioning and Authentication (JWT with HMAC, RSA, ECDSA, OIDC/JWKS or async/KMS signing, Basic, API Key) in a few fluent lines, applies XML documentation comments automatically, standardizes errors as RFC 9457 problem details, with built-in documentation UI protection, a development login endpoint and configuration-based validators.</Description>
 
-    <PackageTags>scalar;openapi;swagger;api-documentation;aspnetcore;authentication;jwt;rsa;ecdsa;jwks;oidc;api-key;basic-auth;versioning;scalar-ui;minimal-api</PackageTags>
+    <PackageTags>scalar;openapi;swagger;api-documentation;aspnetcore;authentication;jwt;rsa;ecdsa;jwks;oidc;api-key;basic-auth;versioning;scalar-ui;minimal-api;problem-details;rfc9457;error-handling</PackageTags>
 
     <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
 
@@ -34,10 +34,9 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- Fails the pack if the public API breaks compared with the last published version.
-         2.0.0 is a major version with intentional breaking changes (see MIGRATION.md), so it has no
-         baseline; set PackageValidationBaselineVersion to 2.0.0 in the next release. -->
+    <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>2.0.0</PackageValidationBaselineVersion>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>

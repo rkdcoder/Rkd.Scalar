@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.1.0
+
+### Added
+
+- **Standardized errors (RFC 9457)** with `WithProblemDetails(options)`:
+  - unhandled exceptions become `500 application/problem+json` without messages or stack traces outside
+    Development (`IncludeExceptionDetails` to override);
+  - exception mapping by type (`options.Map<TException>(status, title, exposeMessage)` or a factory), most
+    specific type wins, 5xx never exposes the message by default;
+  - `ProblemException` (plus `NotFound`, `Conflict`, `BadRequest`, `Forbidden`, `UnprocessableEntity`
+    shortcuts) to return a problem with custom type and extensions;
+  - body-less error responses (unknown routes, 405, 415, 401/403 from authorization) become problems,
+    with `[SkipStatusCodePages]` / `HandleStatusCodes` opt-outs;
+  - every problem (including `Results.Problem` and model validation) gets `instance` and `traceId`;
+    `Customize` adds your own members;
+  - always JSON regardless of `Accept`, `Cache-Control: no-store` on exception responses, `499` without
+    error logs for aborted requests, same behavior in Development (developer exception page filter);
+  - the middleware is registered at the beginning of the pipeline automatically.
+
 ## 2.0.0
 
 Major version with breaking changes — see [MIGRATION.md](MIGRATION.md).

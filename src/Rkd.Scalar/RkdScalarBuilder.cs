@@ -380,6 +380,34 @@ namespace Rkd.Scalar
 
         #endregion
 
+        #region Errors
+
+        /// <summary>
+        /// Standardizes every error response as RFC 9457 problem details (<c>application/problem+json</c>):
+        /// unhandled exceptions, mapped exceptions, <see cref="ProblemException"/>, and body-less error responses
+        /// (404, 405, 401/403…). Every response carries <c>status</c>, <c>title</c>, <c>type</c>, <c>instance</c> and <c>traceId</c>.
+        /// </summary>
+        /// <param name="configure">Exception mappings and options.</param>
+        /// <remarks>
+        /// Safe by default: outside Development, 500 responses never include exception messages or stack traces.
+        /// The middleware is placed at the beginning of the pipeline automatically.
+        /// </remarks>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithProblemDetails(Action<RkdProblemDetailsOptions>? configure = null)
+        {
+            if (_registry.Features.OfType<ProblemDetailsFeature>().Any())
+                throw new InvalidOperationException("WithProblemDetails can only be called once.");
+
+            var options = new RkdProblemDetailsOptions();
+            configure?.Invoke(options);
+
+            RegisterFeature(new ProblemDetailsFeature(options));
+
+            return this;
+        }
+
+        #endregion
+
         #region OpenAPI and routing
 
         /// <summary>

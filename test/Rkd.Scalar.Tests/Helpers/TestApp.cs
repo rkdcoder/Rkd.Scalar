@@ -28,12 +28,16 @@ namespace Rkd.Scalar.Tests.Helpers
             Action<RkdScalarBuilder> configureScalar,
             Action<WebApplication>? configureApp = null,
             IDictionary<string, string?>? settings = null,
-            Action<WebApplication>? useScalar = null)
+            Action<WebApplication>? useScalar = null,
+            string environment = "Testing",
+            Action<WebApplicationBuilder>? configureBuilder = null)
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
-                EnvironmentName = "Testing"
+                EnvironmentName = environment
             });
+
+            configureBuilder?.Invoke(builder);
 
             builder.WebHost.UseTestServer();
 
