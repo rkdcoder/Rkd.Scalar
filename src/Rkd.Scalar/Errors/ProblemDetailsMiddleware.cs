@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.Extensions.Logging;
-using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 
 namespace Rkd.Scalar.Errors
 {
@@ -70,7 +69,7 @@ namespace Rkd.Scalar.Errors
             }
 
             if (ShouldWriteStatusCodeProblem(context, statusCodePages))
-                await _writer.WriteAsync(context, new MvcProblemDetails { Status = context.Response.StatusCode });
+                await _writer.WriteAsync(context, _options.CreateStatusProblem(context));
         }
 
         private static bool ShouldWriteStatusCodeProblem(HttpContext context, StatusCodePagesFeature feature)

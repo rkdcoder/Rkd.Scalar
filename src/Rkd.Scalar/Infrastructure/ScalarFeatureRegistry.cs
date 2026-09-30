@@ -32,6 +32,15 @@ namespace Rkd.Scalar.Infrastructure
         /// </summary>
         public RkdScalarOptions Options { get; set; } = new();
 
+        /// <summary>
+        /// Customizations of the Bearer scheme (<c>ConfigureJwtBearer</c>), applied after Rkd.Scalar's settings
+        /// regardless of the order of the builder calls.
+        /// </summary>
+        public List<Action<Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerOptions>> JwtBearerConfigurations { get; } = new();
+
+        /// <summary>Whether an <see cref="IJwtSigningKeyResolver"/> was registered.</summary>
+        public bool HasJwtSigningKeyResolver { get; set; }
+
         public void AddAuthenticationScheme(string scheme)
         {
             if (!AuthenticationSchemes.Contains(scheme))

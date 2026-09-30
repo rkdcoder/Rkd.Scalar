@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Rkd.Scalar;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Modules;
+using Rkd.Scalar.OpenApi;
 using Rkd.Scalar.OpenApi.XmlComments;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -37,6 +38,9 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 options.AddOperationTransformer<XmlCommentOperationTransformer>();
                 options.AddSchemaTransformer<XmlCommentSchemaTransformer>();
+
+                // IFormFile as "format: binary" (file inputs in Scalar) for every document.
+                options.AddDocumentTransformer<FormFileSchemaTransformer>();
             });
 
             // Routes of [ApiModule] controllers (global template / versioning-aware default).

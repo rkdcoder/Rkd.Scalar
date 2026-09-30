@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Rkd.Scalar.Errors;
 using MvcProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
 
 namespace Rkd.Scalar
@@ -21,6 +22,8 @@ namespace Rkd.Scalar
     public sealed class RkdProblemDetailsOptions
     {
         private readonly Dictionary<Type, Func<Exception, HttpContext, MvcProblemDetails>> _mappings = new();
+
+        private readonly Dictionary<int, Func<HttpContext, MvcProblemDetails>> _statusMappings = new();
 
         /// <summary>
         /// Adds the exception type, message and stack trace to the response (<c>exception</c> extension).
@@ -122,6 +125,72 @@ namespace Rkd.Scalar
             _mappings[typeof(TException)] = (exception, context) => factory((TException)exception, context);
 
             return this;
+        }
+
+        /// <summary>
+        /// Sets the <c>code</c>, <c>detail</c> and <c>title</c> of the problems written for body-less
+        /// <paramref name="statusCode"/> responses (unknown routes, 405, 415, 401/403 from authorization…).
+        /// </summary>
+        /// <param name="statusCode">Error status code (400–599).</param>
+        /// <param name="code">Machine-readable code (e.g. <c>ROUTE_NOT_FOUND</c>).</param>
+        /// <param name="detail">Explanation sent to the client.</param>
+        /// <param name="title">Title. Defaults to the status code reason phrase.</param>
+        /// <returns>The same options, for chaining.</returns>
+        /// <example><code>options.MapStatus(404, "ROUTE_NOT_FOUND", "Check the route and the API version (e.g. /api/v1/...).");</code></example>
+        public RkdProblemDetailsOptions MapStatus(int statusCode, string code, string? detail = null, string? title = null)
+        {
+            code = ProblemCodes.Validate(code);
+
+            return MapStatus(statusCode, _ => new MvcProblemDetails
+            {
+                Title = title,
+                Detail = detail,
+                Extensions = { [ProblemCodes.ExtensionName] = code }
+            });
+        }
+
+        /// <summary>
+        /// Creates the problems written for body-less <paramref name="statusCode"/> responses with a factory
+        /// that receives the <see cref="HttpContext"/> (e.g. to suggest the right route). The status code of
+        /// the response is kept.
+        /// </summary>
+        /// <param name="statusCode">Error status code (400–599).</param>
+        /// <param name="factory">Creates the problem details.</param>
+        /// <returns>The same options, for chaining.</returns>
+        public RkdProblemDetailsOptions MapStatus(int statusCode, Func<HttpContext, MvcProblemDetails> factory)
+        {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            if (statusCode is < 400 or > 599)
+                throw new ArgumentOutOfRangeException(nameof(statusCode), "Only error status codes (400-599) can be mapped.");
+
+            _statusMappings[statusCode] = factory;
+
+            return this;
+        }
+
+        /// <summary>
+        /// Problem of a body-less error response: the authentication failure of a 401 (when it is a
+        /// <see cref="ProblemException"/>), then <see cref="MapStatus(int, string, string?, string?)"/>, then the default.
+        /// </summary>
+        internal MvcProblemDetails CreateStatusProblem(HttpContext context)
+        {
+            var status = context.Response.StatusCode;
+            MvcProblemDetails? problem = null;
+
+            if (status == StatusCodes.Status401Unauthorized && AuthenticationFailures.Get(context) is { } failure)
+            {
+                problem = failure.ToProblemDetails();
+            }
+            else if (_statusMappings.TryGetValue(status, out var factory))
+            {
+                problem = factory(context);
+            }
+
+            problem ??= new MvcProblemDetails();
+            problem.Status = status;
+
+            return problem;
         }
 
         /// <summary>

@@ -103,6 +103,9 @@ namespace Microsoft.AspNetCore.Builder
         {
             scalar.Title = options.Title;
             scalar.Theme = options.Theme;
+
+            if (options.DarkMode is { } darkMode)
+                scalar.DarkMode = darkMode;
             scalar.OpenApiRoutePattern = options.OpenApiRoutePattern;
 
             options.ConfigureScalar?.Invoke(scalar);

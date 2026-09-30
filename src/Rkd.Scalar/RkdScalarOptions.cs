@@ -28,6 +28,12 @@ namespace Rkd.Scalar
         public ScalarTheme Theme { get; set; } = ScalarTheme.Default;
 
         /// <summary>
+        /// Opens the Scalar UI in dark (<see langword="true"/>) or light (<see langword="false"/>) mode;
+        /// <see langword="null"/> (default) keeps Scalar's default. Users can still switch it in the UI.
+        /// </summary>
+        public bool? DarkMode { get; set; }
+
+        /// <summary>
         /// When <see langword="false"/>, the OpenAPI documents and the Scalar UI are not mapped
         /// (authentication and the login endpoint keep working). Handy to turn documentation off per
         /// environment, e.g. <c>"RkdScalar": { "Enabled": false }</c> in appsettings.Production.json.

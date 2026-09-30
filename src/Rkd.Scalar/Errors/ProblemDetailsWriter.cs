@@ -30,6 +30,7 @@ namespace Rkd.Scalar.Errors
             [408] = "https://tools.ietf.org/html/rfc9110#section-15.5.9",
             [409] = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
             [412] = "https://tools.ietf.org/html/rfc9110#section-15.5.13",
+            [413] = "https://tools.ietf.org/html/rfc9110#section-15.5.14",
             [415] = "https://tools.ietf.org/html/rfc9110#section-15.5.16",
             [422] = "https://tools.ietf.org/html/rfc9110#section-15.5.21",
             [426] = "https://tools.ietf.org/html/rfc9110#section-15.5.22",

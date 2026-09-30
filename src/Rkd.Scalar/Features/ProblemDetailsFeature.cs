@@ -49,6 +49,9 @@ namespace Rkd.Scalar.Features
                 .Configure<IHostEnvironment>((json, environment) =>
                     json.AllowInputFormatterExceptionMessages = _options.IncludeExceptionDetails ?? environment.IsDevelopment());
 
+            // Controllers: exceeded form limits become 413 (MVC reports them as validation errors).
+            services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(mvc => mvc.Filters.Add(new FormLimitActionFilter()));
+
             if (_options.DocumentErrorResponses)
             {
                 services.ConfigureAll<OpenApiOptions>(options =>

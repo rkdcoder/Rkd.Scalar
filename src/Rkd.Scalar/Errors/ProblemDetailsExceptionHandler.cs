@@ -54,10 +54,7 @@ namespace Rkd.Scalar.Errors
             var problem = CreateProblem(context, exception);
             var status = problem.Status!.Value;
 
-            if (status >= StatusCodes.Status500InternalServerError)
-                LogServerError(_logger, exception, status, context.Request.Method, context.Request.Path);
-            else
-                LogClientError(_logger, status, exception.GetType().Name, context.Request.Method, context.Request.Path, exception.Message);
+            Log(context, exception, status);
 
             if (_includeDetails)
             {
@@ -72,6 +69,30 @@ namespace Rkd.Scalar.Errors
             await _writer.WriteAsync(context, problem, exception);
         }
 
+        private void Log(HttpContext context, Exception exception, int status)
+        {
+            var request = context.Request;
+            var logDetails = (exception as IProblemLogDetails)?.LogDetails;
+
+            if (status >= StatusCodes.Status500InternalServerError)
+            {
+                if (string.IsNullOrEmpty(logDetails))
+                    LogServerError(_logger, exception, status, request.Method, request.Path);
+                else
+                    LogServerErrorWithDetails(_logger, exception, status, request.Method, request.Path, logDetails);
+
+                return;
+            }
+
+            // 4xx are expected: no stack trace, unless there is an inner exception (the real cause) to log.
+            var cause = exception.InnerException is null ? null : exception;
+
+            if (string.IsNullOrEmpty(logDetails))
+                LogClientError(_logger, cause, status, exception.GetType().Name, request.Method, request.Path, exception.Message);
+            else
+                LogClientErrorWithDetails(_logger, cause, status, exception.GetType().Name, request.Method, request.Path, exception.Message, logDetails);
+        }
+
         private MvcProblemDetails CreateProblem(HttpContext context, Exception exception)
         {
             if (exception is ProblemException problemException)
@@ -80,17 +101,23 @@ namespace Rkd.Scalar.Errors
             if (_options.TryMap(exception, context, out var mapped))
                 return mapped;
 
+            if (IsRequestBodyError(exception, out var bodyStatus))
+            {
+                // Form/multipart limits (MultipartBodyLengthLimit, ValueCountLimit…) and malformed forms: client errors.
+                return new MvcProblemDetails
+                {
+                    Status = bodyStatus,
+                    Detail = _includeDetails ? exception.Message : SafeDetail(bodyStatus)
+                };
+            }
+
             if (exception is BadHttpRequestException badRequest)
             {
                 // Framework messages name parameters and .NET types; outside Development a safe text is sent instead.
                 return new MvcProblemDetails
                 {
                     Status = badRequest.StatusCode,
-                    Detail = _includeDetails
-                        ? badRequest.Message
-                        : badRequest.StatusCode == StatusCodes.Status400BadRequest
-                            ? "The request could not be read. Check the route, query string and body format."
-                            : null
+                    Detail = _includeDetails ? badRequest.Message : SafeDetail(badRequest.StatusCode)
                 };
             }
 
@@ -100,6 +127,36 @@ namespace Rkd.Scalar.Errors
                 Title = "An unexpected error occurred.",
                 Detail = _includeDetails ? exception.Message : null
             };
+        }
+
+        private static string? SafeDetail(int status) => status switch
+        {
+            StatusCodes.Status400BadRequest => "The request could not be read. Check the route, query string and body format.",
+            StatusCodes.Status413PayloadTooLarge => "The request body is larger than the maximum allowed size.",
+            _ => null
+        };
+
+        /// <summary>
+        /// <see cref="InvalidDataException"/> thrown by ASP.NET Core while reading a form or a multipart body
+        /// (possibly wrapped by MVC). Exceeded limits become 413, malformed bodies 400. The same exception type
+        /// thrown by your own code is not affected.
+        /// </summary>
+        private static bool IsRequestBodyError(Exception exception, out int status)
+        {
+            for (Exception? current = exception; current is not null; current = current.InnerException)
+            {
+                if (current is InvalidDataException &&
+                    current.Source is "Microsoft.AspNetCore.WebUtilities" or "Microsoft.AspNetCore.Http")
+                {
+                    status = current.Message.Contains("limit", StringComparison.OrdinalIgnoreCase)
+                        ? StatusCodes.Status413PayloadTooLarge
+                        : StatusCodes.Status400BadRequest;
+                    return true;
+                }
+            }
+
+            status = 0;
+            return false;
         }
 
         private static Exception Unwrap(Exception exception) =>
@@ -125,7 +182,13 @@ namespace Rkd.Scalar.Errors
         private static partial void LogServerError(ILogger logger, Exception exception, int statusCode, string method, PathString path);
 
         [LoggerMessage(EventId = 2, Level = LogLevel.Information, Message = "{ExceptionType} returned as {StatusCode} for {Method} {Path}: {Message}")]
-        private static partial void LogClientError(ILogger logger, int statusCode, string exceptionType, string method, PathString path, string message);
+        private static partial void LogClientError(ILogger logger, Exception? exception, int statusCode, string exceptionType, string method, PathString path, string message);
+
+        [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message = "{ExceptionType} returned as {StatusCode} for {Method} {Path}: {Message} Details: {LogDetails}")]
+        private static partial void LogClientErrorWithDetails(ILogger logger, Exception? exception, int statusCode, string exceptionType, string method, PathString path, string message, string logDetails);
+
+        [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Unhandled exception returned as {StatusCode} for {Method} {Path}. Details: {LogDetails}")]
+        private static partial void LogServerErrorWithDetails(ILogger logger, Exception exception, int statusCode, string method, PathString path, string logDetails);
 
         [LoggerMessage(EventId = 3, Level = LogLevel.Debug, Message = "Request {Method} {Path} was aborted by the client.")]
         private static partial void LogClientClosedRequest(ILogger logger, string method, PathString path);

@@ -17,7 +17,7 @@ namespace Rkd.Scalar
     /// };
     /// </code>
     /// </example>
-    public class ProblemException : Exception
+    public class ProblemException : Exception, IProblemLogDetails
     {
         /// <summary>
         /// Creates a problem with the given status code.
@@ -63,6 +63,24 @@ namespace Rkd.Scalar
         }
 
         private readonly string? _code;
+
+        /// <summary>
+        /// Technical details written to the log and <b>never</b> sent to the client (ids, upstream errors…).
+        /// The <see cref="Exception.InnerException"/>, when present, is logged as well.
+        /// </summary>
+        public string? LogDetails { get; set; }
+
+        /// <summary>
+        /// Sets <see cref="LogDetails"/> and returns the same exception, for use with <see cref="RkdError"/>:
+        /// <c>throw RkdError.Conflict("CODE", "…").WithLogDetails($"tenant={tenant}");</c>.
+        /// </summary>
+        /// <param name="logDetails">Details written only to the log.</param>
+        /// <returns>The same exception.</returns>
+        public ProblemException WithLogDetails(string? logDetails)
+        {
+            LogDetails = logDetails;
+            return this;
+        }
 
         /// <summary>
         /// Converts the exception into the problem details that will be sent to the client.
