@@ -45,7 +45,7 @@ namespace Rkd.Scalar.Tests.Integration
                 BaseAddress = new Uri(_baseAddress)
             };
 
-            var response = await client.GetAsync("/scalar/v1");
+            var response = await client.GetAsync("/scalar/v1", TestContext.Current.CancellationToken);
 
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 

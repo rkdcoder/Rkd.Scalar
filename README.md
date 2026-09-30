@@ -6,7 +6,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/Rkd.Scalar.svg)](https://www.nuget.org/packages/Rkd.Scalar)
 [![Build & Publish](https://github.com/rkdcoder/Rkd.Scalar/actions/workflows/main.yml/badge.svg)](https://github.com/rkdcoder/Rkd.Scalar/actions/workflows/main.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/rkdcoder/Rkd.Scalar/blob/master/LICENSE)
 
 **Rkd.Scalar** adds a production-ready API documentation platform.
 It combines documentation, authentication helpers and security protections into a single fluent configuration layer.
@@ -19,11 +19,15 @@ Rkd.Scalar integrates:
 
 - **Scalar UI**
 - **OpenAPI generation**
-- **JWT Bearer authentication**
+- **JWT Bearer authentication** — HMAC secret, **RSA / ECDSA keys**, **OIDC authority (JWKS)** or **async / KMS signing**
 - **API Key authentication**
 - **Basic authentication**
 - **API versioning integration**
 - **Scalar UI protection**
+- **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
+- **Default authentication scheme** — a plain `[Authorize]` accepts Bearer, Basic and API Key
+- **Per-operation security** — only protected endpoints show the lock in Scalar
+- **JWKS endpoint** — publish your public keys so other services validate your tokens
 - **Default JWT login endpoint with built-in rate limiting** (development / testing convenience)
 
 All features are enabled through a simple **fluent builder API**.
@@ -38,23 +42,13 @@ Rkd.Scalar focuses on three principles:
 - **Security** – protect documentation and test endpoints safely
 - **Extensibility** – modular feature-based architecture
 
-### Key Capabilities
-
-- Minimal configuration
-- Built-in **Basic Authentication** support
-- Built-in **JWT Bearer Authentication** support
-- Built-in **API Key Authentication** support
-- Optional **default JWT login endpoint** for development and testing
-- **Scalar UI protection** via Basic Auth
-- Built-in **API versioning integration**
-- Feature-based modular architecture
-
 ---
 
 # Who is this for?
 
 - Teams building internal APIs
 - SaaS platforms exposing partner APIs
+- Microservices that validate tokens issued by an identity provider (Keycloak, Entra ID, Auth0…)
 - Developers who want production-ready documentation fast
 - Teams tired of complex Swagger configuration
 
@@ -78,23 +72,14 @@ Install-Package Rkd.Scalar
 
 # 30‑Second Setup
 
-Most APIs can enable Scalar with only a few lines:
-
 ```csharp
-// JWT validation only (recommended baseline)
-builder.Services
-    .AddRkdScalar(builder.Configuration)
+builder.AddRkdScalar()
     .WithVersioning("v1")
-    .WithBearerAuth(jwtOptions);
+    .WithBearerAuth();              // JwtOptions bound from appsettings.json
 ```
 
 ```csharp
-// JWT + default login endpoint (development / testing only)
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithVersioning("v1")
-    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
-    .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
+app.UseRkdScalar();                 // RkdScalar section of appsettings.json (optional)
 ```
 
 Run the application and open:
@@ -108,10 +93,9 @@ You now have:
 - OpenAPI documentation
 - Scalar UI
 - JWT authentication
-- A login endpoint for local testing (when using `WithDefaultJwtLogin`)
 
-> For production, prefer exposing your **own login endpoint** using the services
-> registered by Rkd.Scalar. See [JWT in Production](#jwt-in-production--custom-login-endpoint).
+> `builder.AddRkdScalar()` is a shortcut for
+> `builder.Services.AddRkdScalar(builder.Configuration)` — both keep working.
 
 ---
 
@@ -150,9 +134,9 @@ var jwtOptions = new JwtOptions
     ValidateNotBefore = true
 };
 
-builder.Services
-    .AddRkdScalar(builder.Configuration)
+builder.AddRkdScalar()
     .WithVersioning("v1")
+    .WithUiProtection("admin", "change-me")
     .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
     .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
 
@@ -164,44 +148,71 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.UseRkdScalar(new RkdScalarConfiguration
-{
-    Title = "My API"
-});
+app.UseRkdScalar(new RkdScalarConfiguration { Title = "My API" });
 
 app.Run();
 ```
 
-> **Note:** hardcoding the JWT secret is shown here only for brevity. In real
-> applications, load it from environment variables, user secrets or a secret
+> **Note:** hardcoding secrets is shown here only for brevity. In real
+> applications, load them from environment variables, user secrets or a secret
 > manager — never commit secrets to source control.
+
+---
+
+# Configuration via appsettings.json
+
+`app.UseRkdScalar()` (no arguments) reads the `RkdScalar` section when it exists:
+
+```json
+{
+  "RkdScalar": {
+    "Title": "My API",
+    "Theme": "BluePlanet",
+    "ScalarRoutePrefix": "/scalar",
+    "OpenApiRoutePattern": "/openapi/{documentName}.json",
+    "Enabled": true
+  }
+}
+```
+
+| Setting               | Default                         | Description                                                                 |
+| --------------------- | ------------------------------- | --------------------------------------------------------------------------- |
+| `Title`               | `API Documentation.`            | Title shown by Scalar                                                       |
+| `Theme`               | `Default`                       | Scalar theme                                                                |
+| `ScalarRoutePrefix`   | `/scalar`                       | Route of the Scalar UI                                                      |
+| `OpenApiRoutePattern` | `/openapi/{documentName}.json`  | Route of the OpenAPI documents (Scalar and UI protection follow it)         |
+| `Enabled`             | `true`                          | `false` hides the UI and documents (authentication keeps working)           |
+
+Turning the documentation off in production is just configuration:
+
+```json
+// appsettings.Production.json
+{ "RkdScalar": { "Enabled": false } }
+```
+
+The three `UseRkdScalar` overloads:
+
+```csharp
+app.UseRkdScalar();                                                 // "RkdScalar" section (or defaults)
+app.UseRkdScalar("Docs", o => o.ConfigureScalar = s => s.DarkMode = true); // any section + code
+app.UseRkdScalar(new RkdScalarConfiguration { Title = "My API" });      // code only
+```
 
 ---
 
 # Customizing the Scalar UI
 
-Rkd.Scalar allows full customization of Scalar through `ConfigureScalar`.
-
-Simple UI configuration:
+Rkd.Scalar allows full customization of Scalar through `ConfigureScalar`:
 
 ```csharp
 app.UseRkdScalar(new RkdScalarConfiguration
 {
     Title = "My API",
-    Theme = ScalarTheme.BluePlanet
-});
-```
-
-Advanced Scalar customization:
-
-```csharp
-app.UseRkdScalar(new RkdScalarConfiguration
-{
-    Title = "My API",
-    ConfigureScalar = opt =>
+    ConfigureScalar = scalar =>
     {
-        opt.DarkMode = true;
-        opt.Theme = ScalarTheme.BluePlanet;
+        scalar.DarkMode = true;
+        scalar.Theme = ScalarTheme.BluePlanet;
+        scalar.EnablePersistentAuthentication();
     }
 });
 ```
@@ -212,99 +223,16 @@ This gives direct access to **ScalarOptions** while still keeping Rkd.Scalar's s
 
 # Why not Swashbuckle?
 
-| Feature                    | Swashbuckle | Rkd.Scalar |
-| -------------------------- | ----------- | ---------- |
-| **OpenAPI generation**     | ✔           | ✔          |
-| **Scalar UI**              | ❌          | ✔          |
-| **JWT login endpoint**     | ❌          | ✔ (dev)    |
-| **API Key auth**           | manual      | built-in   |
-| **UI protection**          | ❌          | ✔          |
-| **Versioning integration** | manual      | built-in   |
-
----
-
-# Configuration via appsettings.json
-
-Rkd.Scalar can also be configured using **appsettings.json**.
-
-Example configuration:
-
-```json
-{
-  "RkdScalar": {
-    "Title": "My API",
-    "OpenApiRoutePattern": "/openapi/{documentName}.json",
-    "Theme": "BluePlanet"
-  }
-}
-```
-
-Program.cs:
-
-```csharp
-...
-app.MapControllers();
-
-var scalarOptions =
-    builder.Configuration
-           .GetSection("RkdScalar")
-           .Get<RkdScalarConfiguration>()!;
-
-scalarOptions.ConfigureScalar = opt =>
-{
-    opt.DarkMode = true;
-};
-
-app.UseRkdScalar(scalarOptions);
-
-app.Run();
-```
-
-This approach is useful for:
-
-- environment‑based configuration
-- DevOps pipelines
-- centralized configuration
-
----
-
-# JWT Options via appsettings.json
-
-Instead of building `JwtOptions` manually, you can bind it directly from a
-configuration section using the section-name overloads:
-
-appsettings.json:
-
-```json
-{
-  "JwtOptions": {
-    "Secret": "SUPER_SECRET_KEY_MINIMUM_32_CHARACTERS",
-    "Issuer": "MyApi",
-    "Audience": "MyApiClient",
-    "Expiration": 2,
-    "ValidateNotBefore": true
-  }
-}
-```
-
-`Expiration` is expressed in **hours**.
-
-Program.cs:
-
-```csharp
-// Validation-only mode, bound from the "JwtOptions" section (default name)
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithBearerAuth();
-
-// Or with credential validation, using a custom section name
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithBearerAuth<AuthCredential, LoginValidator>("Auth:Jwt");
-```
-
-If the section is missing or invalid (empty `Secret`, non-positive
-`Expiration`), the application fails fast at startup with a descriptive error.
+| Feature                        | Swashbuckle | Rkd.Scalar |
+| ------------------------------ | ----------- | ---------- |
+| **OpenAPI generation**         | ✔           | ✔          |
+| **Scalar UI**                  | ❌          | ✔          |
+| **JWT (HMAC / RSA / ECDSA)**   | manual      | built-in   |
+| **JWKS endpoint**              | ❌          | ✔          |
+| **JWT login endpoint**         | ❌          | ✔ (dev)    |
+| **API Key auth**               | manual      | built-in   |
+| **UI protection**              | ❌          | ✔          |
+| **Versioning integration**     | manual      | built-in   |
 
 ---
 
@@ -318,22 +246,9 @@ Use this mode when your API only validates bearer tokens issued elsewhere
 (an identity provider, an auth microservice, another API).
 
 ```csharp
-var jwtOptions = new JwtOptions
-{
-    Secret = "SUPER_SECRET_KEY_MINIMUM_32_CHARACTERS",
-    Issuer = "MyApi",
-    Audience = "MyApiClient",
-    Expiration = TimeSpan.FromHours(2),
-    ValidateNotBefore = true
-};
-
-builder.Services
-    .AddRkdScalar(builder.Configuration)
+builder.AddRkdScalar()
     .WithBearerAuth(jwtOptions);
 ```
-
-This configures JWT validation and OpenAPI Bearer security without requiring
-a credential model or validator.
 
 ## 2) JWT with credential validation (token issuing)
 
@@ -343,8 +258,7 @@ Use this mode when your API itself issues tokens. It registers:
 - `IJwtTokenService` (token generation)
 
 ```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
+builder.AddRkdScalar()
     .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions);
 ```
 
@@ -353,15 +267,175 @@ From here you have two options for the login endpoint:
 - **Production:** implement your **own** login endpoint (recommended — see below)
 - **Development / testing:** use `WithDefaultJwtLogin` for a zero-code endpoint
 
-Example credential model:
+---
+
+# JWT Signing Keys
+
+`JwtOptions` accepts exactly **one** key source:
+
+| Key source                               | Algorithm (inferred)       | Issues tokens | Validates tokens |
+| ---------------------------------------- | -------------------------- | ------------- | ---------------- |
+| `Secret` (≥ 32 chars)                    | HS256                      | ✔             | ✔                |
+| `PrivateKeyPem` / `PrivateKeyPath`       | RS256 (RSA), ES256/384/512 | ✔             | ✔                |
+| `PublicKeyPem` / `PublicKeyPath`         | RS256, ES256…              | ❌            | ✔                |
+| `SigningKey` (`X509SecurityKey`, …)      | from the key               | ✔             | ✔                |
+| `Authority` / `MetadataAddress` (OIDC)   | from the provider          | ❌            | ✔                |
+| `IJwtSigner` (KMS / Key Vault / HSM)     | `IJwtSigner.Algorithm`     | ✔ (async)     | with a public key |
+
+Other options: `Algorithm` (e.g. `PS256`; when set, validation accepts only it),
+`KeyId` (the `kid` header — RSA/ECDSA keys get their RFC 7638 thumbprint by default),
+`ValidationKeys` (extra keys accepted during **key rotation**), `ClockSkew` and
+`RequireHttpsMetadata`.
+
+## HMAC secret (shared key)
 
 ```csharp
-public class AuthCredential
+new JwtOptions
 {
-    public required string Username { get; set; }
-    public required string Password { get; set; }
+    Secret = builder.Configuration["Jwt:Secret"]!,
+    Issuer = "MyApi",
+    Audience = "MyApiClient",
+    Expiration = TimeSpan.FromHours(2)
+};
+```
+
+## RSA / ECDSA (asymmetric)
+
+The API that issues tokens holds the private key; every other service only needs
+the public key (or the JWKS endpoint).
+
+```json
+{
+  "JwtOptions": {
+    "PrivateKeyPath": "/run/secrets/jwt-private.pem",
+    "Issuer": "https://auth.mycompany.com",
+    "Audience": "my-api",
+    "ExpirationMinutes": 30
+  }
 }
 ```
+
+```csharp
+builder.AddRkdScalar()
+    .WithBearerAuth<AuthCredential, LoginValidator>()   // binds "JwtOptions"
+    .WithJwksEndpoint();                                 // GET /.well-known/jwks.json
+```
+
+Generate keys with OpenSSL:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
+openssl pkey -in jwt-private.pem -pubout -out jwt-public.pem
+# or ECDSA P-256 (ES256)
+openssl ecparam -name prime256v1 -genkey -noout -out jwt-private.pem
+```
+
+PEM content can also be passed inline (`PrivateKeyPem`, `PublicKeyPem`), including
+from environment variables with escaped `\n` line breaks.
+
+Services that only **validate** these tokens:
+
+```json
+{ "JwtOptions": { "PublicKeyPath": "jwt-public.pem", "Issuer": "https://auth.mycompany.com", "Audience": "my-api" } }
+```
+
+## External identity provider (Keycloak, Entra ID, Auth0, your own JWKS)
+
+```json
+{
+  "JwtOptions": {
+    "Authority": "https://keycloak.mycompany.com/realms/main",
+    "Audience": "my-api"
+  }
+}
+```
+
+```csharp
+builder.AddRkdScalar().WithBearerAuth();
+```
+
+Issuer and signing keys are downloaded (and rotated) from the provider's
+discovery document. Use `MetadataAddress` when the discovery document is not at
+`{Authority}/.well-known/openid-configuration`.
+
+## Async signing — KMS, Key Vault, HSM
+
+When the private key must never leave a vault, implement `IJwtSigner`. Rkd.Scalar
+builds the header and payload and only delegates the signature — asynchronously.
+
+```csharp
+using Azure.Security.KeyVault.Keys.Cryptography;
+using Rkd.Scalar.Security.Jwt;
+
+public sealed class KeyVaultJwtSigner(CryptographyClient client) : IJwtSigner
+{
+    public string Algorithm => "RS256";
+    public string? KeyId => "my-key-v1";
+
+    public async Task<byte[]> SignAsync(byte[] data, CancellationToken cancellationToken = default)
+    {
+        var result = await client.SignDataAsync(SignatureAlgorithm.RS256, data, cancellationToken);
+        return result.Signature;
+    }
+}
+```
+
+```csharp
+builder.Services.AddSingleton(new CryptographyClient(keyId, new DefaultAzureCredential()));
+
+builder.AddRkdScalar()
+    .WithBearerAuth<AuthCredential, LoginValidator>(new JwtOptions
+    {
+        PublicKeyPath = "jwt-public.pem",   // used to validate the tokens this API issues
+        KeyId = "my-key-v1",
+        Issuer = "MyApi",
+        Audience = "MyApiClient"
+    })
+    .WithJwtSigner<KeyVaultJwtSigner>();
+```
+
+> For ECDSA algorithms the signature must be in IEEE P1363 format (R‖S), as
+> required by RFC 7518 — AWS KMS returns DER and needs conversion.
+
+Use `await jwtService.GenerateTokenAsync(identity, cancellationToken: ct)` in your
+own endpoints (the synchronous `GenerateToken` keeps working, but blocks when an
+`IJwtSigner` is registered). To replace token issuing entirely, use
+`.WithJwtTokenService<MyTokenService>()`.
+
+---
+
+# JWT Options via appsettings.json
+
+Instead of building `JwtOptions` manually, bind it from a configuration section
+using the section-name overloads:
+
+```json
+{
+  "JwtOptions": {
+    "Secret": "SUPER_SECRET_KEY_MINIMUM_32_CHARACTERS",
+    "Issuer": "MyApi",
+    "Audience": "MyApiClient",
+    "Expiration": 2,
+    "ValidateNotBefore": true
+  }
+}
+```
+
+`Expiration` is expressed in **hours**; use `ExpirationMinutes` for shorter
+lifetimes. All key options above (`PrivateKeyPem`, `PrivateKeyPath`,
+`PublicKeyPem`, `PublicKeyPath`, `Algorithm`, `KeyId`, `Authority`,
+`MetadataAddress`, `RequireHttpsMetadata`, `ClockSkewSeconds`) can be bound too.
+
+```csharp
+// Validation-only mode, bound from the "JwtOptions" section (default name)
+builder.AddRkdScalar().WithBearerAuth();
+
+// Or with credential validation, using a custom section name
+builder.AddRkdScalar().WithBearerAuth<AuthCredential, LoginValidator>("Auth:Jwt");
+```
+
+If the section is missing or invalid (no key, non-positive expiration), the
+application fails fast at startup with a descriptive error.
 
 ---
 
@@ -374,17 +448,6 @@ issue tokens from your own endpoint: your `ICredentialValidator<TCredential>`
 and the `IJwtTokenService`. You keep full control over the route, versioning,
 rate limiting policy, logging, auditing and response shape.
 
-## Program.cs
-
-```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithVersioning("v1")
-    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions);
-```
-
-## Login endpoint (Controller)
-
 ```csharp
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -395,43 +458,28 @@ using Rkd.Scalar.Security.Jwt;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/auth")]
-public sealed class AuthController : ControllerBase
+public sealed class AuthController(
+    ICredentialValidator<AuthCredential> validator,
+    IJwtTokenService jwtService) : ControllerBase
 {
-    private readonly ICredentialValidator<AuthCredential> _validator;
-    private readonly IJwtTokenService _jwtService;
-
-    public AuthController(
-        ICredentialValidator<AuthCredential> validator,
-        IJwtTokenService jwtService)
-    {
-        _validator = validator;
-        _jwtService = jwtService;
-    }
-
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login(
         [FromBody] AuthCredential credential,
         CancellationToken cancellationToken)
     {
-        var identity = await _validator.ValidateAsync(credential, cancellationToken);
+        var identity = await validator.ValidateAsync(credential, cancellationToken);
 
         if (identity is null)
             return Unauthorized();
 
-        var token = _jwtService.GenerateToken(identity);
+        var token = await jwtService.GenerateTokenAsync(identity, cancellationToken: cancellationToken);
 
-        return Ok(new
-        {
-            access_token = token.Token,
-            expires_at = token.ExpiresAtUtc
-        });
+        // { access_token, token_type, expires_in, expires_at }
+        return Ok(JwtLoginResponse.FromResult(token));
     }
 }
 ```
-
-Both `ICredentialValidator<AuthCredential>` and `IJwtTokenService` are resolved
-from dependency injection — no extra registration required.
 
 ## Production-grade validator
 
@@ -439,28 +487,16 @@ In production, the validator should check credentials against a real user
 store using password hashing — never plaintext comparison:
 
 ```csharp
-using Rkd.Scalar.Security.Contracts;
-using System.Security.Claims;
-
-public sealed class LoginValidator : ICredentialValidator<AuthCredential>
+public sealed class LoginValidator(IUserRepository users, IPasswordHasher hasher)
+    : ICredentialValidator<AuthCredential>
 {
-    private readonly IUserRepository _users;
-    private readonly IPasswordHasher _hasher;
-
-    public LoginValidator(IUserRepository users, IPasswordHasher hasher)
-    {
-        _users = users;
-        _hasher = hasher;
-    }
-
     public async Task<ClaimsIdentity?> ValidateAsync(
         AuthCredential request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _users.FindByUsernameAsync(
-            request.Username, cancellationToken);
+        var user = await users.FindByUsernameAsync(request.Username, cancellationToken);
 
-        if (user is null || !_hasher.Verify(request.Password, user.PasswordHash))
+        if (user is null || !hasher.Verify(request.Password, user.PasswordHash))
             return null;
 
         var claims = new List<Claim>
@@ -482,10 +518,10 @@ BCrypt or Argon2).
 
 ## Production checklist
 
-- Load the JWT secret from environment variables or a secret manager
+- Load secrets and private keys from environment variables, mounted files or a secret manager
+- Prefer asymmetric keys (RSA/ECDSA) when more than one service validates the tokens
 - Hash and verify passwords — never store or compare plaintext
 - Apply your own rate limiting policy to the login route
-  (`[EnableRateLimiting("your-policy")]`)
 - Log failed authentication attempts for auditing
 - Consider refresh tokens and token revocation if your scenario requires them
 
@@ -494,38 +530,22 @@ BCrypt or Argon2).
 # Default JWT Login Endpoint (Development / Testing)
 
 > ⚠️ **This feature is intended for development, testing and prototyping —
-> not for production.** It exposes a generic login endpoint with a fixed
-> response shape and a simple fixed-window rate limiter. For production, build
-> your own endpoint as shown in
+> not for production.** For production, build your own endpoint as shown in
 > [JWT in Production](#jwt-in-production--custom-login-endpoint).
-
-Rkd.Scalar can automatically expose a login endpoint that issues JWT tokens,
-which is convenient for testing your API through the Scalar UI without writing
-any authentication endpoint.
 
 ```csharp
 .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
 .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1))
 ```
 
-This creates:
-
-```
-POST /auth/login
-```
-
-The request body is automatically bound to the credential model (`TCredential`).
-
-This means the JSON payload must match the credential type configured in
-`WithBearerAuth<TCredential, TValidator>()`.
+This creates `POST /auth/login`. The request body is bound to the credential
+model (`TCredential`), which must be the same type used in
+`WithBearerAuth<TCredential, TValidator>()` — a mismatch fails at startup.
 
 Example request:
 
 ```json
-{
-  "username": "admin",
-  "password": "123"
-}
+{ "username": "admin", "password": "123" }
 ```
 
 Example response:
@@ -533,315 +553,177 @@ Example response:
 ```json
 {
   "access_token": "JWT_TOKEN",
+  "token_type": "Bearer",
+  "expires_in": 7200,
   "expires_at": "2026-01-01T12:00:00Z"
 }
 ```
 
 ## Built-in Brute Force Protection
 
-The default login endpoint automatically configures **ASP.NET Rate Limiting**
-using the values you provide:
+The endpoint configures **ASP.NET Rate Limiting**, partitioned **per client IP**:
+in the example above each client gets at most **5 attempts per minute**; beyond
+that the API returns `HTTP 429 Too Many Requests` with a `Retry-After` header.
+
+Prefer your own policy? Pass its name instead:
 
 ```csharp
-.WithDefaultJwtLogin<AuthCredential>(
-    "/auth/login",
-    5,
-    TimeSpan.FromMinutes(1))
+builder.Services.AddRateLimiter(o => o.AddSlidingWindowLimiter("login", ...));
+
+.WithDefaultJwtLogin<AuthCredential>("/auth/login", "login")
 ```
 
-This means:
+Don't forget `app.UseRateLimiter();` before `app.UseAuthentication();`.
 
-- Maximum **5 login attempts**
-- Within **1 minute**
-
-If exceeded, the API returns:
-
-```
-HTTP 429 Too Many Requests
-```
-
-Don't forget to add `app.UseRateLimiter();` before `app.UseAuthentication();`
-in your Program.cs file.
-
-## Requirements
-
-`WithDefaultJwtLogin()` requires JWT authentication with credential validation.
-
-You must configure this **before** calling it:
-
-```csharp
-.WithBearerAuth<TCredential, TValidator>(jwtOptions)
-```
-
-The validation-only overload cannot issue login tokens:
-
-```csharp
-.WithBearerAuth(jwtOptions) // ❌ not compatible with WithDefaultJwtLogin
-```
-
-### Credential Type Requirement
-
-The credential type used in `WithDefaultJwtLogin<TCredential>()` **must be the
-same** used in `WithBearerAuth<TCredential, TValidator>()`.
-
-Correct usage:
-
-```csharp
-.WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
-.WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1))
-```
-
-Incorrect usage (will throw an exception during startup):
-
-```csharp
-.WithBearerAuth<BasicAuthCredentials, UiCredentialValidator>(jwtOptions)
-.WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1))
-```
-
-The login endpoint depends on the credential model registered for JWT
-authentication, therefore both methods must use the **same request model type**.
+> Behind a reverse proxy, configure `ForwardedHeaders` so the client IP is the
+> real one — otherwise every request shares the proxy IP.
 
 ---
 
 # Authentications
 
-**Important**
-
 `ICredentialValidator<T>` is **provided by the Rkd.Scalar NuGet package**
-(`Rkd.Scalar.Security.Contracts`).
+(`Rkd.Scalar.Security.Contracts`). When implementing validators, use the
+interface from the package.
 
-When implementing validators, you should **use the interface from the package**,
-not create your own interface with the same name.
-This interface defines the contract used internally by Rkd.Scalar
-authentication features (Basic, JWT, and API Key).
+Every scheme can be configured in two ways:
 
----
+| Scheme       | With your validator                   | From configuration (no code)          |
+| ------------ | ------------------------------------- | ------------------------------------- |
+| UI protection| `WithUiProtection<TValidator>()`      | `WithUiProtection("UiCredentials")` or `WithUiProtection(user, password)` |
+| Basic        | `WithBasicAuth<TValidator>()`         | `WithBasicAuth("BasicAuth")`          |
+| API Key      | `WithApiKeyAuth<TValidator>()`        | `WithApiKeyAuth("ApiKeys")`           |
+
+Configuration-based validators compare secrets in constant time, treat usernames
+case-insensitively, re-read the section on each request (reloadable
+configuration works) and fail fast at startup when the section is missing.
 
 ## Basic Authentication
 
-```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithBasicAuth<UiCredentialValidator>();
+From configuration:
+
+```json
+{
+  "BasicAuth": {
+    "Username": "service-user",
+    "Password": "service-password"
+  }
+}
 ```
 
-Validator example (illustrative only — in real applications validate against a
-user store with hashed passwords):
+```csharp
+builder.AddRkdScalar().WithBasicAuth();
+```
+
+Or with your own validator:
 
 ```csharp
-public class UiCredentialValidator : ICredentialValidator<BasicAuthCredentials>
+public class BasicValidator : ICredentialValidator<BasicAuthCredentials>
 {
     public Task<ClaimsIdentity?> ValidateAsync(
         BasicAuthCredentials request,
         CancellationToken cancellationToken = default)
     {
-        if (request.Username == "admin" && request.Password == "123")
-        {
-            var identity = new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.Name, request.Username) },
-                "Basic");
-
-            return Task.FromResult<ClaimsIdentity?>(identity);
-        }
-
-        return Task.FromResult<ClaimsIdentity?>(null);
+        // validate against your user store
     }
+}
+
+builder.AddRkdScalar().WithBasicAuth<BasicValidator>();
+```
+
+## API Key Authentication
+
+Requests must include the header `X-API-Key: YOUR_API_KEY` (configurable).
+
+From configuration — any of these formats:
+
+```json
+{
+  "ApiKeys": {
+    "partner-a": "key-for-partner-a",
+    "partner-b": { "Key": "key-for-partner-b", "Roles": [ "reader" ] }
+  }
 }
 ```
 
----
-
-# API Key Authentication
-
-Rkd.Scalar supports **API Key authentication** using a request header.
-
-Enable API Key support:
+```json
+{ "ApiKeys": [ "key-1", "key-2" ] }
+```
 
 ```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithApiKeyAuth<ApiKeyValidator>();
+builder.AddRkdScalar().WithApiKeyAuth();
+
+// custom header
+builder.AddRkdScalar().WithApiKeyAuth(configure: o => o.HeaderName = "X-Partner-Key");
 ```
 
-Requests must include the header:
+The client name becomes the user name (`User.Identity.Name`) and `Roles` become
+role claims.
 
-```
-X-API-Key: YOUR_API_KEY
-```
-
-Validator example (illustrative only — in real applications validate keys
-against a secure store):
+Or with your own validator:
 
 ```csharp
-using Rkd.Scalar.Security.ApiKey;
-using Rkd.Scalar.Security.Contracts;
-using System.Security.Claims;
-
 public class ApiKeyValidator : ICredentialValidator<ApiKeyCredentials>
 {
     public Task<ClaimsIdentity?> ValidateAsync(
         ApiKeyCredentials request,
         CancellationToken cancellationToken = default)
     {
-        if (request.Key == "ABC123")
-        {
-            var identity = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim(ClaimTypes.Name, "ApiKeyUser"),
-                    new Claim(ClaimTypes.Role, "SERVICE")
-                },
-                "ApiKey"
-            );
-
-            return Task.FromResult<ClaimsIdentity?>(identity);
-        }
-
-        return Task.FromResult<ClaimsIdentity?>(null);
+        // validate request.Key against a secure store
     }
 }
+
+builder.AddRkdScalar().WithApiKeyAuth<ApiKeyValidator>();
+builder.AddRkdScalar().WithApiKeyAuth<ApiKeyValidator>(o => o.HeaderName = "X-Partner-Key");
 ```
 
-The API Key scheme will automatically appear in the **Scalar authentication panel**.
+The API Key scheme automatically appears in the **Scalar authentication panel**.
 
 ---
 
 # Securing Endpoints
 
-Example protected endpoint:
+With more than one scheme, ASP.NET Core has no default scheme, so endpoints must
+name them — use the constants in `RkdScalarAuthenticationSchemes`:
 
 ```csharp
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-[Authorize(AuthenticationSchemes = "Bearer,Basic,ApiKey")]
+[Authorize(AuthenticationSchemes = RkdScalarAuthenticationSchemes.All)]   // "Bearer,Basic,ApiKey"
 [HttpGet("secure")]
-public IActionResult SecureEndpoint()
-{
-    return Ok("Authorized access");
-}
+public IActionResult SecureEndpoint() => Ok("Authorized access");
+```
+
+Or let Rkd.Scalar choose the scheme from the request, so a plain `[Authorize]`
+works with every enabled scheme:
+
+```csharp
+builder.AddRkdScalar()
+    .WithBearerAuth()
+    .WithApiKeyAuth()
+    .WithDefaultAuthenticationScheme();
+
+app.MapGet("/orders", () => ...).RequireAuthorization();
+```
+
+## Per-operation security in the documentation
+
+By default every operation shows every scheme. With `WithOperationSecurity()`
+only endpoints that require authorization show the lock, `[AllowAnonymous]`
+endpoints show none and `[Authorize(AuthenticationSchemes = "Bearer")]` offers
+only Bearer:
+
+```csharp
+builder.AddRkdScalar()
+    .WithBearerAuth()
+    .WithApiKeyAuth()
+    .WithOperationSecurity();
 ```
 
 ---
 
 # Protecting the Scalar UI
 
-To require authentication before accessing the documentation UI:
-
-```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithUiProtection<UiCredentialValidator>();
-```
-
-This protects:
-
-- Scalar UI
-- OpenAPI documents
-
-using Basic Authentication.
-
----
-
-# Reading UI Credentials from appsettings.json
-
-When using `WithUiProtection<TValidator>()`, the recommended approach is to
-implement the validator by injecting `IConfiguration` and reading credentials
-directly from appsettings.json.
-
-This keeps Program.cs clean and allows credentials to be managed per
-environment without changing code.
-
-appsettings.json:
-
-```json
-{
-  "UiCredentials": {
-    "Username": "myuser",
-    "Password": "mypassword"
-  }
-}
-```
-
-Validator implementation:
-
-```csharp
-using System.Security.Claims;
-using Microsoft.Extensions.Configuration;
-using Rkd.Scalar.Security.Basic;
-using Rkd.Scalar.Security.Contracts;
-
-public sealed class UiCredentialValidator : ICredentialValidator<BasicAuthCredentials>
-{
-    private readonly IReadOnlyDictionary<string, string> _credentials;
-
-    public UiCredentialValidator(IConfiguration configuration)
-    {
-        var section = configuration.GetSection("UiCredentials");
-        var creds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        // Format 1: UiCredentials:Username / UiCredentials:Password
-        var singleUsername = section["Username"];
-        var singlePassword = section["Password"];
-        if (!string.IsNullOrWhiteSpace(singleUsername) && singlePassword is not null)
-            creds[singleUsername] = singlePassword;
-
-        // Format 2: UiCredentials:{ "user1": "pass1", "user2": "pass2" }
-        foreach (var child in section.GetChildren())
-        {
-            if (child.Key.Equals("Username", StringComparison.OrdinalIgnoreCase) ||
-                child.Key.Equals("Password", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (!string.IsNullOrWhiteSpace(child.Key) && child.Value is not null)
-                creds[child.Key] = child.Value;
-        }
-
-        _credentials = creds;
-    }
-
-    public Task<ClaimsIdentity?> ValidateAsync(
-        BasicAuthCredentials request,
-        CancellationToken cancellationToken = default)
-    {
-        if (request is null ||
-            string.IsNullOrWhiteSpace(request.Username) ||
-            request.Password is null)
-            return Task.FromResult<ClaimsIdentity?>(null);
-
-        var valid = _credentials.TryGetValue(request.Username, out var expectedPassword) &&
-                    string.Equals(expectedPassword, request.Password, StringComparison.Ordinal);
-
-        if (!valid)
-            return Task.FromResult<ClaimsIdentity?>(null);
-
-        var identity = new ClaimsIdentity(
-            new[]
-            {
-                new Claim(ClaimTypes.Name, request.Username),
-                new Claim(ClaimTypes.Role, "user")
-            },
-            authenticationType: "Basic");
-
-        return Task.FromResult<ClaimsIdentity?>(identity);
-    }
-}
-```
-
-This validator supports two credential formats in appsettings.json:
-
-Single user:
-
-```json
-{
-  "UiCredentials": {
-    "Username": "myuser",
-    "Password": "mypassword"
-  }
-}
-```
-
-Multiple users:
+To require authentication before accessing the documentation UI and the
+OpenAPI documents (the API itself is not affected):
 
 ```json
 {
@@ -852,24 +734,21 @@ Multiple users:
 }
 ```
 
-Behavior:
-
-- Username comparison is case-insensitive
-- Password comparison is case-sensitive (exact match)
-- Any username with a null password is rejected
-
-Registration:
-
 ```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithUiProtection<UiCredentialValidator>()
-    .WithBearerAuth(jwtOptions)
-    .WithLowercaseRouting();
+builder.AddRkdScalar().WithUiProtection();            // reads "UiCredentials"
+builder.AddRkdScalar().WithUiProtection("Docs:Users"); // custom section
+builder.AddRkdScalar().WithUiProtection("admin", builder.Configuration["DocsPassword"]!);
 ```
 
-`IConfiguration` is injected automatically by ASP.NET's dependency injection
-container. No additional registration is required.
+The section also accepts the single-user format
+`{ "Username": "myuser", "Password": "mypassword" }`.
+
+Custom logic (a database, an LDAP…)? Implement
+`ICredentialValidator<BasicAuthCredentials>` and use
+`WithUiProtection<TValidator>()`.
+
+Protection follows `ScalarRoutePrefix` and `OpenApiRoutePattern`, so custom
+documentation routes are protected too.
 
 ---
 
@@ -877,30 +756,23 @@ container. No additional registration is required.
 
 Rkd.Scalar integrates with **Asp.Versioning** automatically.
 
-Configuration:
-
 ```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
+builder.AddRkdScalar()
     .WithVersioning("v1", "v2", "v3");
+
+// customizing ApiVersioningOptions (default version, readers…)
+builder.AddRkdScalar()
+    .WithVersioning(o => o.DefaultApiVersion = new ApiVersion(2, 0), "v1", "v2");
 ```
 
-Example controller:
-
 ```csharp
-using Asp.Versioning;
-using Microsoft.AspNetCore.Mvc;
-
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/payments")]
 public class PaymentController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Get()
-    {
-        return Ok("API v1 running");
-    }
+    public IActionResult Get() => Ok("API v1 running");
 }
 ```
 
@@ -910,21 +782,7 @@ Scalar automatically generates a document for each version.
 
 # Launch Scalar Automatically
 
-To open Scalar automatically when the application starts:
-
-Edit:
-
-```
-Properties/launchSettings.json
-```
-
-Enable browser launch:
-
-```json
-"launchBrowser": true
-```
-
-Set Scalar as startup page:
+In `Properties/launchSettings.json`:
 
 ```json
 "launchBrowser": true,
@@ -933,41 +791,77 @@ Set Scalar as startup page:
 
 ---
 
-# Feature‑Based Architecture
+# Builder API Reference
 
-Rkd.Scalar is built using a modular **feature system**.
-
-```
-Rkd.Scalar
-
-Builder
-Configuration
-Extensions
-Features
-Middleware
-OpenApi
-Security
-```
-
-Each capability (JWT, Basic Auth, API Key Auth, Versioning, UI protection) is
-implemented as an independent feature.
-
-This makes the library:
-
-- easy to extend
-- easy to maintain
-- easy to evolve
+| Method                                                   | What it does                                                               |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `WithVersioning("v1", ...)`                              | API versioning + one OpenAPI document per version                          |
+| `WithUiProtection<TValidator>()` / `WithUiProtection(section)` / `WithUiProtection(user, pwd)` | Basic Auth in front of the UI and OpenAPI documents |
+| `WithBearerAuth(options)` / `WithBearerAuth(section)`    | JWT validation (HMAC, RSA, ECDSA, OIDC authority)                          |
+| `WithBearerAuth<TCredential, TValidator>(...)`           | JWT validation + token issuing (`IJwtTokenService`)                        |
+| `WithJwtSigner<TSigner>()`                               | Async/remote token signing (KMS, Key Vault, HSM)                           |
+| `WithJwtTokenService<TService>()`                        | Replaces the token issuer                                                  |
+| `WithJwksEndpoint(path)`                                 | Publishes the public keys (`/.well-known/jwks.json`)                       |
+| `WithDefaultJwtLogin<TCredential>(path, limit, window)`  | Dev login endpoint with per-IP rate limiting                               |
+| `WithDefaultJwtLogin<TCredential>(path, policy)`         | Dev login endpoint with your rate limiting policy                          |
+| `WithBasicAuth<TValidator>()` / `WithBasicAuth(section)` | Basic authentication for the API                                           |
+| `WithApiKeyAuth<TValidator>(configure?)` / `WithApiKeyAuth(section, configure?)` | API Key authentication                             |
+| `WithDefaultAuthenticationScheme()`                      | Plain `[Authorize]` accepts every enabled scheme                           |
+| `WithOperationSecurity()`                                | Security requirements only on protected operations                         |
+| `WithLowercaseRouting()`                                 | Lowercase URLs and query strings                                           |
 
 ---
 
-# Advantages
+# Production Example
 
-- Extremely simple configuration
-- Minimal OpenAPI boilerplate
-- Built-in security features
-- Modern Scalar documentation UI
-- Versioning support
-- Highly extensible architecture
+A realistic production setup issues tokens through **your own** login endpoint
+and does **not** use `WithDefaultJwtLogin`:
+
+```csharp
+builder.AddRkdScalar()
+    .WithVersioning("v1", "v2", "v3")
+    .WithUiProtection()                                          // "UiCredentials" section
+    .WithBearerAuth<AuthCredential, LoginValidator>()            // "JwtOptions" section (RSA key)
+    .WithJwksEndpoint()
+    .WithApiKeyAuth()                                            // "ApiKeys" section
+    .WithDefaultAuthenticationScheme()
+    .WithOperationSecurity()
+    .WithLowercaseRouting();
+```
+
+If your API does not issue tokens at all (they come from an identity provider):
+
+```csharp
+builder.AddRkdScalar().WithBearerAuth();   // "JwtOptions": { "Authority": "...", "Audience": "..." }
+```
+
+# Development Example
+
+```csharp
+builder.AddRkdScalar()
+    .WithVersioning("v1")
+    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
+    .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
+```
+
+---
+
+# Feature‑Based Architecture
+
+Each capability (JWT, Basic Auth, API Key Auth, Versioning, UI protection…) is
+implemented as an independent feature, which makes the library easy to extend,
+maintain and evolve.
+
+```
+Rkd.Scalar
+├── Builder         fluent API
+├── Configuration   UseRkdScalar options
+├── Extensions      AddRkdScalar / UseRkdScalar
+├── Features        one class per capability
+├── Middleware      UI protection
+├── OpenApi         security scheme transformers
+└── Security        JWT, Basic, API Key, validators
+```
 
 ---
 
@@ -977,255 +871,19 @@ This makes the library:
 - ASP.NET Core Minimal APIs
 - ASP.NET Core Controllers
 
----
-
-# Production Example
-
-A realistic production setup issues tokens through **your own** login endpoint
-(see [JWT in Production](#jwt-in-production--custom-login-endpoint)) and does
-**not** use `WithDefaultJwtLogin`:
-
-```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithVersioning("v1", "v2", "v3")
-    .WithUiProtection<UiCredentialValidator>()
-    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
-    .WithApiKeyAuth<ApiKeyValidator>()
-    .WithLowercaseRouting();
-```
-
-If your API does not issue tokens at all (they come from an external identity
-provider), prefer the simpler validation-only setup:
-
-```csharp
-.WithBearerAuth(jwtOptions)
-```
-
-# Development Example
-
-For local development and prototyping, the default login endpoint removes all
-authentication boilerplate:
-
-```csharp
-builder.Services
-    .AddRkdScalar(builder.Configuration)
-    .WithVersioning("v1")
-    .WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
-    .WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1));
-```
-
----
-
-## Features Overview
-
-Below is a brief explanation of each feature available in **Rkd.Scalar** and
-the problem it is designed to solve.
-
----
-
-### API Versioning
-
-```csharp
-.WithVersioning("v1", "v2", "v3")
-```
-
-Enables API versioning and automatically exposes each version in the Scalar
-documentation UI.
-
-Each version becomes selectable in the documentation interface, allowing
-developers to test and explore different API versions independently.
-
-This feature integrates with **ASP.NET API Versioning** and configures the
-OpenAPI documents required for Scalar.
-
-Typical use cases:
-
-- Maintaining backward compatibility between API versions
-- Gradually migrating clients between versions
-- Supporting multiple client applications using different API versions
-
----
-
-### Scalar UI Protection
-
-```csharp
-.WithUiProtection<UiCredentialValidator>()
-```
-
-Protects the **Scalar documentation interface** using Basic Authentication.
-
-This prevents unauthorized users from accessing the API documentation while
-still allowing the API itself to remain public if desired.
-
-The provided validator (`ICredentialValidator<BasicAuthCredentials>`) is
-responsible for validating the credentials used to access the UI.
-
-Typical use cases:
-
-- Restricting documentation access in production environments
-- Allowing only internal teams to view API documentation
-- Preventing accidental exposure of internal APIs
-
----
-
-### Basic Authentication
-
-```csharp
-.WithBasicAuth<UiCredentialValidator>()
-```
-
-Enables **HTTP Basic Authentication** support for API endpoints.
-
-This feature registers the required OpenAPI security scheme and integrates the
-authentication flow so credentials can be provided directly from the Scalar UI
-when testing endpoints.
-
-The validator implementation is responsible for validating the provided
-username and password.
-
-Typical use cases:
-
-- Internal APIs
-- Simple service-to-service authentication
-- Legacy integrations
-
----
-
-### JWT Bearer Authentication
-
-Rkd.Scalar supports two JWT setup modes:
-
-Validation-only (no token issuing):
-
-```csharp
-.WithBearerAuth(jwtOptions)
-```
-
-JWT with credential validation (token issuing support):
-
-```csharp
-.WithBearerAuth<AuthCredential, LoginValidator>(jwtOptions)
-```
-
-The validation-only mode configures token validation and the OpenAPI Bearer
-scheme. The generic mode additionally registers
-`ICredentialValidator<TCredential>` and `IJwtTokenService`, enabling token
-issuing either from your own endpoint (production) or from
-`WithDefaultJwtLogin<TCredential>()` (development).
-
-This feature configures:
-
-- JWT token validation
-- OpenAPI security definitions
-- Authentication middleware integration
-
-Typical use cases:
-
-- Modern API authentication
-- Stateless authentication
-- Mobile and SPA clients
-
----
-
-### Default JWT Login Endpoint (Development / Testing)
-
-```csharp
-.WithDefaultJwtLogin<AuthCredential>("/auth/login", 5, TimeSpan.FromMinutes(1))
-```
-
-Registers a **default login endpoint** that issues JWT access tokens, intended
-for **development, testing and prototyping**.
-
-The endpoint automatically binds the request body to the credential model
-(`TCredential`) and validates it using the configured
-`ICredentialValidator<TCredential>`.
-
-Example endpoint:
-
-```
-POST /auth/login
-```
-
-The endpoint includes built-in **rate limiting** to protect against
-brute-force attempts during testing.
-
-Example configuration above means:
-
-- Maximum **5 login attempts**
-- Within **1 minute**
-
-If the limit is exceeded, the API returns:
-
-```
-HTTP 429 Too Many Requests
-```
-
-Typical use cases:
-
-- Development environments
-- Rapid prototyping
-- Integration test scenarios
-
-For production, implement your own authentication endpoint using the services
-registered by `WithBearerAuth<TCredential, TValidator>()` — see
-[JWT in Production](#jwt-in-production--custom-login-endpoint).
-
----
-
-### API Key Authentication
-
-```csharp
-.WithApiKeyAuth<ApiKeyValidator>()
-```
-
-Enables **API Key authentication** support.
-
-Clients authenticate by sending an API key in the request header.
-
-```
-X-API-Key: YOUR_API_KEY
-```
-
-The provided validator (`ICredentialValidator<ApiKeyCredentials>`) is
-responsible for validating the API key.
-
-The feature automatically registers the OpenAPI security scheme so the API key
-can be provided directly from the Scalar UI.
-
-Typical use cases:
-
-- Partner integrations
-- Machine-to-machine communication
-- Public APIs with controlled access
-
----
-
-### Lowercase Routing
-
-```csharp
-.WithLowercaseRouting()
-```
-
-Configures ASP.NET routing to generate **lowercase URLs and query strings**.
-
-This improves URL consistency and avoids issues caused by case-sensitive
-routing in certain environments.
-
-Benefits include:
-
-- Consistent API URLs
-- Better compatibility with proxies and gateways
-- Improved SEO for public APIs
+Every release is checked against the previously published package with
+[package validation](https://learn.microsoft.com/dotnet/fundamentals/apicompat/package-validation/overview),
+so public APIs are never removed or changed in a breaking way within a major version.
 
 ---
 
 # Roadmap
 
-Planned features:
+- OAuth2 flows in the Scalar authentication panel
+- Refresh tokens
+- ProblemDetails responses for authentication failures
 
-- OAuth2 support
-- Extended Scalar customization
+See the [CHANGELOG](https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md) for release history.
 
 ---
 

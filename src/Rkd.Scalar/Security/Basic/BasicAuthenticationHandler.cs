@@ -41,7 +41,7 @@ namespace Rkd.Scalar.Security.Basic
                     "Invalid Basic Authorization header");
             }
 
-            var identity = await _validator.ValidateAsync(credentials);
+            var identity = await _validator.ValidateAsync(credentials, Context.RequestAborted);
 
             if (identity == null)
             {

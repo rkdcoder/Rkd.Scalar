@@ -6,68 +6,38 @@
     <Nullable>enable</Nullable>
 
     <PackageId>Rkd.Scalar</PackageId>
-    <Version>1.0.12</Version>
+    <Version>1.1.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
-    <Product>Rkd.Scalar NuGet</Product>
+    <Product>Rkd.Scalar</Product>
+    <Title>Rkd.Scalar</Title>
 
-    <PackageDescription>
-      Zero-boilerplate Scalar wrapper for ASP.NET Core that configures OpenAPI, API Versioning, and Authentication (JWT, Basic, API Key) in seconds, with built-in documentation UI protection.
-    </PackageDescription>
+    <Description>Zero-boilerplate Scalar wrapper for ASP.NET Core. Configures OpenAPI, API Versioning and Authentication (JWT with HMAC, RSA, ECDSA, OIDC/JWKS or async/KMS signing, Basic, API Key) in a few fluent lines, with built-in documentation UI protection, a development login endpoint and configuration-based validators.</Description>
 
-    <Description>
-      Rkd.Scalar is an opinionated wrapper designed to eliminate the boilerplate required to configure modern API documentation infrastructure in ASP.NET Core.
+    <PackageTags>scalar;openapi;swagger;api-documentation;aspnetcore;authentication;jwt;rsa;ecdsa;jwks;oidc;api-key;basic-auth;versioning;scalar-ui;minimal-api</PackageTags>
 
-      Instead of manually configuring OpenAPI, authentication schemes, versioning, and documentation security, Rkd.Scalar provides a clean and fluent setup that works in minutes.
-
-      Key features:
-
-      🚀 Zero Boilerplate
-      Reduce 50+ lines of OpenAPI / Swagger configuration to just a few fluent lines.
-
-      🛡️ Documentation UI Protection
-      Protect the Scalar documentation interface using Basic Authentication without blocking access to the API itself.
-
-      🔑 Integrated Authentication
-      Built-in support for:
-      - JWT Bearer authentication
-      - Basic authentication
-      - API Key authentication
-
-      ⚡ Default JWT Login Endpoint
-      Optional built-in login endpoint for issuing JWT tokens during development and testing.
-
-      📦 API Versioning Integration
-      Native integration with Asp.Versioning for clean multi-version API documentation.
-
-      🧩 Modular Feature Architecture
-      Feature-based design that allows authentication methods and documentation features to be enabled independently.
-
-      Perfect for:
-      • Microservices
-      • Internal APIs
-      • Enterprise ASP.NET Core APIs
-      • Rapid prototyping with secure documentation
-
-      Compatible with modern ASP.NET Core applications (.NET 10+).
-    </Description>
+    <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
 
     <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
-    <Readme>README.md</Readme>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <Title>Rkd.Scalar</Title>
+    <!-- Ships the /// comments so IntelliSense shows them to package consumers. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
 
-    <Summary>
-      Zero-boilerplate Scalar documentation wrapper for ASP.NET Core with built-in authentication, API versioning, and UI protection.
-    </Summary>
+    <!-- SourceLink (built into the .NET SDK) + deterministic CI builds. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <PackageTags>
-      scalar openapi swagger api-documentation aspnetcore auth jwt api-key basic-auth versioning scalar-ui documentation middleware developer-tools
-    </PackageTags>
-    
+    <!-- Fails the pack if the public API breaks compared with the last published version. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>1.0.12</PackageValidationBaselineVersion>
+
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -82,6 +52,10 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rkd.Scalar.Tests" />
   </ItemGroup>
 
   <ItemGroup>

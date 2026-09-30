@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Rkd.Scalar.Configuration;
+using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Middleware;
 
 namespace Rkd.Scalar.Features
@@ -22,16 +23,26 @@ namespace Rkd.Scalar.Features
             if (!options.Value.Enabled)
                 return;
 
+            var configuration = app.Services
+                .GetRequiredService<ScalarFeatureRegistry>()
+                .Configuration;
+
+            if (!configuration.Enabled)
+                return;
+
+            var scalarPrefix = NormalizePrefix(configuration.ScalarRoutePrefix);
+            var openApiPrefix = NormalizePrefix(GetStaticPrefix(configuration.OpenApiRoutePattern));
+
             app.UseWhen(
                 context =>
                 {
                     var path = context.Request.Path.Value ?? "";
 
                     var isScalarUi =
-                        path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase);
+                        path.StartsWith(scalarPrefix, StringComparison.OrdinalIgnoreCase);
 
                     var isOpenApi =
-                        path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase);
+                        path.StartsWith(openApiPrefix, StringComparison.OrdinalIgnoreCase);
 
                     return isScalarUi || isOpenApi;
                 },
@@ -39,6 +50,29 @@ namespace Rkd.Scalar.Features
                 {
                     branch.UseMiddleware<ScalarUiAuthMiddleware>();
                 });
+        }
+
+        /// <summary>
+        /// Returns the literal part of a route pattern, before its first parameter
+        /// ("/openapi/{documentName}.json" → "/openapi/").
+        /// </summary>
+        internal static string GetStaticPrefix(string routePattern)
+        {
+            var index = routePattern.IndexOf('{');
+
+            return index < 0 ? routePattern : routePattern[..index];
+        }
+
+        internal static string NormalizePrefix(string prefix)
+        {
+            var normalized = "/" + prefix.Trim().Trim('/');
+
+            if (normalized == "/")
+                throw new InvalidOperationException(
+                    "The Scalar UI and OpenAPI routes need a non-root prefix to be protected " +
+                    "(for example '/scalar' and '/openapi/{documentName}.json').");
+
+            return normalized;
         }
     }
 }
