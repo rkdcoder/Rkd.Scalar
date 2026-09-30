@@ -41,6 +41,12 @@ namespace Rkd.Scalar.Infrastructure
         /// <summary>Whether an <see cref="IJwtSigningKeyResolver"/> was registered.</summary>
         public bool HasJwtSigningKeyResolver { get; set; }
 
+        /// <summary>Paths whose bodies are never written to the HTTP log (e.g. the login endpoint).</summary>
+        public HashSet<string> SensitivePaths { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Options of <c>WithHttpLogging</c>, once enabled.</summary>
+        public RkdHttpLoggingOptions? HttpLogging { get; set; }
+
         public void AddAuthenticationScheme(string scheme)
         {
             if (!AuthenticationSchemes.Contains(scheme))

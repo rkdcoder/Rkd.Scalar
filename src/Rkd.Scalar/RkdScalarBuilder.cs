@@ -183,6 +183,99 @@ namespace Rkd.Scalar
 
         #endregion
 
+        #region HTTP logging
+
+        /// <summary>
+        /// Logs every HTTP request (method, path, status, duration, user, headers, bodies, error <c>code</c>,
+        /// exception…) to the registered <see cref="IHttpLogSink"/>s — a database, a file, a queue — without
+        /// slowing down the requests: entries go to a bounded in-memory queue and are written in batches by a
+        /// background service. Credentials are redacted; the options are bound from the <c>HttpLogging</c>
+        /// configuration section when it exists.
+        /// </summary>
+        /// <param name="configure">Changes to the options (applied after the configuration section).</param>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        /// <example>
+        /// <code>
+        /// builder.AddRkdScalar()
+        ///     .WithHttpLogging(o => o.ExcludedPaths.Add("/health"))
+        ///     .WriteHttpLogsToSqlServer(connectionString);          // Rkd.Scalar.HttpLogging.SqlServer
+        /// </code>
+        /// </example>
+        public RkdScalarBuilder WithHttpLogging(Action<RkdHttpLoggingOptions>? configure = null)
+        {
+            var options = EnsureHttpLogging();
+
+            configure?.Invoke(options);
+            options.Validate();
+
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a destination for the HTTP logs (enables <see cref="WithHttpLogging"/> with its defaults when needed).
+        /// Several sinks can be combined; each receives every batch.
+        /// </summary>
+        /// <typeparam name="TSink">Your <see cref="IHttpLogSink"/>, registered as a singleton.</typeparam>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithHttpLogSink<TSink>()
+            where TSink : class, IHttpLogSink
+        {
+            EnsureHttpLogging();
+            Services.AddSingleton<IHttpLogSink, TSink>();
+
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a destination for the HTTP logs created by <paramref name="factory"/> (enables
+        /// <see cref="WithHttpLogging"/> with its defaults when needed).
+        /// </summary>
+        /// <param name="factory">Creates the sink (singleton).</param>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithHttpLogSink(Func<IServiceProvider, IHttpLogSink> factory)
+        {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            EnsureHttpLogging();
+            Services.AddSingleton(factory);
+
+            return this;
+        }
+
+        private RkdHttpLoggingOptions EnsureHttpLogging()
+        {
+            if (_registry.HttpLogging is { } existing)
+                return existing;
+
+            var options = new RkdHttpLoggingOptions();
+            var section = Configuration.GetSection("HttpLogging");
+
+            if (section.Exists())
+            {
+                section.Bind(options);
+
+                // Claim lists replace the defaults (the binder would append to them).
+                if (section.GetSection(nameof(RkdHttpLoggingOptions.UserNameClaimTypes)).Get<string[]>() is { } userNames)
+                    options.UserNameClaimTypes = userNames;
+
+                if (section.GetSection(nameof(RkdHttpLoggingOptions.UserIdClaimTypes)).Get<string[]>() is { } userIds)
+                    options.UserIdClaimTypes = userIds;
+            }
+
+            _registry.HttpLogging = options;
+
+            Services.AddSingleton(options);
+            Services.AddSingleton<HttpLogging.HttpLogQueue>();
+            Services.AddHostedService<HttpLogging.HttpLogWriterService>();
+
+            // First startup filter: the logging middleware wraps everything else, problem details included.
+            Services.Insert(0, ServiceDescriptor.Transient<Microsoft.AspNetCore.Hosting.IStartupFilter, HttpLogging.HttpLoggingStartupFilter>());
+
+            return options;
+        }
+
+        #endregion
+
         #region JWT
 
         /// <summary>
@@ -390,6 +483,8 @@ namespace Rkd.Scalar
             TimeSpan? window = null)
             where TCredentials : class
         {
+            _registry.SensitivePaths.Add(path);
+
             RegisterFeature(new JwtLoginEndpointFeature<TCredentials>(
                 path,
                 permitLimit,
@@ -408,6 +503,8 @@ namespace Rkd.Scalar
         public RkdScalarBuilder WithJwtLoginEndpoint<TCredentials>(string path, string rateLimitPolicy)
             where TCredentials : class
         {
+            _registry.SensitivePaths.Add(path);
+
             RegisterFeature(new JwtLoginEndpointFeature<TCredentials>(path, rateLimitPolicy));
 
             return this;

@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Rkd.Scalar\Rkd.Scalar.csproj" />
+    <ProjectReference Include="..\..\src\Rkd.Scalar.HttpLogging.SqlServer\Rkd.Scalar.HttpLogging.SqlServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

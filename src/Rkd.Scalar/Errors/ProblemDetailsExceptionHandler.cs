@@ -56,6 +56,10 @@ namespace Rkd.Scalar.Errors
 
             Log(context, exception, status);
 
+            // The HTTP log is outside this middleware and would not see the exception otherwise.
+            if (status >= StatusCodes.Status500InternalServerError)
+                HttpLogging.HttpLogItems.SetException(context, exception);
+
             if (_includeDetails)
             {
                 problem.Extensions["exception"] = new Dictionary<string, object?>

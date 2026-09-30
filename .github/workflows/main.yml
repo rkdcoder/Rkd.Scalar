@@ -51,8 +51,10 @@ jobs:
       - name: Run tests
         run: dotnet test --configuration Release --no-build
 
-      - name: Pack NuGet package
-        run: dotnet pack src/Rkd.Scalar/Rkd.Scalar.csproj --configuration Release --no-build --output ./artifacts
+      - name: Pack NuGet packages
+        run: |
+          dotnet pack src/Rkd.Scalar/Rkd.Scalar.csproj --configuration Release --no-build --output ./artifacts
+          dotnet pack src/Rkd.Scalar.HttpLogging.SqlServer/Rkd.Scalar.HttpLogging.SqlServer.csproj --configuration Release --no-build --output ./artifacts
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
