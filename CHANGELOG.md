@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 1.3.0
+
+### Added
+
+- **Version selector always available**: the Scalar UI lists every API version in its dropdown,
+  newest first, with deprecated versions flagged as `(deprecated)`. `/scalar` opens the newest
+  non-deprecated version; `/scalar/v1` redirects to the dropdown with `v1` selected (existing links
+  keep working). Disable with `RkdScalarConfiguration.VersionSelector = false`.
+- Deprecation is read from `[ApiVersion(..., Deprecated = true)]` / `HasDeprecatedApiVersion` on the
+  endpoints (Asp.Versioning 10 only reports it through deprecation policies) and from deprecation policies.
+
+### Changed
+
+- README and launch settings now point to `/scalar` instead of `/scalar/v1`.
+
 ## 1.2.0
 
 ### Added

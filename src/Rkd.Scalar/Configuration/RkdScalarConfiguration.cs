@@ -35,6 +35,14 @@ namespace Rkd.Scalar.Configuration
         public bool Enabled { get; set; } = true;
 
         /// <summary>
+        /// When <see langword="true"/> (default), the Scalar UI always lists every API version in its
+        /// document dropdown (newest first, deprecated versions flagged): <c>/scalar/</c> selects the newest
+        /// version and <c>/scalar/v1</c> redirects to the dropdown with <c>v1</c> selected.
+        /// Set to <see langword="false"/> to keep one page per version.
+        /// </summary>
+        public bool VersionSelector { get; set; } = true;
+
+        /// <summary>
         /// Direct access to the Scalar options, applied after the settings above.
         /// </summary>
         public Action<ScalarOptions>? ConfigureScalar { get; set; }
