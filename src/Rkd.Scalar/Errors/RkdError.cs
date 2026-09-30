@@ -78,7 +78,7 @@ namespace Rkd.Scalar
             ArgumentNullException.ThrowIfNull(errors);
 
             var problem = Create(statusCode, code, detail, ValidationTitle);
-            problem.Extensions["errors"] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
+            problem.Extensions[Errors.ProblemCodes.ErrorsName] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
 
             return problem;
         }

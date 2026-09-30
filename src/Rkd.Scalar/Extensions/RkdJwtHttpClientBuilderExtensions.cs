@@ -59,6 +59,9 @@ namespace Microsoft.Extensions.DependencyInjection
 
             builder.Services.TryAddSingleton<RkdJwtTokenCache>();
 
+            if (options.ForwardIncomingToken)
+                builder.Services.AddHttpContextAccessor();
+
             var name = builder.Name;
 
             return builder.AddHttpMessageHandler(services => new RkdJwtTokenHandler(

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Rkd.Scalar.Security.Jwt
@@ -40,11 +41,31 @@ namespace Rkd.Scalar.Security.Jwt
         {
             if (request.Headers.Authorization is null)
             {
-                var token = await _cache.GetAsync(_clientName, CreateTokenAsync, _options.RefreshBeforeExpiration, cancellationToken);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+                if (_options.ForwardIncomingToken && IncomingBearer() is { } incoming)
+                {
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", incoming);
+                }
+                else
+                {
+                    var token = await _cache.GetAsync(_clientName, CreateTokenAsync, _options.RefreshBeforeExpiration, cancellationToken);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+                }
             }
 
             return await base.SendAsync(request, cancellationToken);
+        }
+
+        /// <summary>The Bearer token of the request being handled, if any.</summary>
+        private string? IncomingBearer()
+        {
+            var authorization = _services.GetService<IHttpContextAccessor>()?.HttpContext?.Request.Headers.Authorization.ToString();
+
+            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var token = authorization["Bearer ".Length..].Trim();
+
+            return token.Length == 0 ? null : token;
         }
 
         private Task<JwtToken> CreateTokenAsync(CancellationToken cancellationToken)

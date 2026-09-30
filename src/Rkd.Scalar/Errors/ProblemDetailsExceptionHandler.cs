@@ -76,7 +76,9 @@ namespace Rkd.Scalar.Errors
         private void Log(HttpContext context, Exception exception, int status)
         {
             var request = context.Request;
-            var logDetails = (exception as IProblemLogDetails)?.LogDetails;
+            var logDetails = exception is Rkd.Problems.HttpProblemException { Problem: { } upstream } && _options.MapsUpstreamProblems
+                ? UpstreamLogDetails(upstream)
+                : (exception as IProblemLogDetails)?.LogDetails;
 
             if (status >= StatusCodes.Status500InternalServerError)
             {
@@ -101,6 +103,9 @@ namespace Rkd.Scalar.Errors
         {
             if (exception is ProblemException problemException)
                 return problemException.ToProblemDetails();
+
+            if (_options.MapsUpstreamProblems && exception is Rkd.Problems.HttpProblemException upstream)
+                return FromUpstream(upstream.Problem);
 
             if (_options.TryMap(exception, context, out var mapped))
                 return mapped;
@@ -137,6 +142,31 @@ namespace Rkd.Scalar.Errors
 
             return unexpected;
         }
+
+        /// <summary>4xx of the other API keep its status, code, title, detail and errors; 5xx become 502.</summary>
+        private static MvcProblemDetails FromUpstream(Rkd.Problems.HttpProblem upstream)
+        {
+            if (upstream.Status is < 400 or > 499)
+                return new MvcProblemDetails { Status = StatusCodes.Status502BadGateway };
+
+            var problem = new MvcProblemDetails
+            {
+                Status = upstream.Status,
+                Title = upstream.Title,
+                Detail = upstream.Detail,
+                Extensions = { [ProblemCodes.ExtensionName] = upstream.Code }
+            };
+
+            if (upstream.Errors is { Count: > 0 } errors)
+                problem.Extensions[ProblemCodes.ErrorsName] = errors;
+
+            return problem;
+        }
+
+        /// <summary>What the log keeps of a failed call to another API, to correlate both logs.</summary>
+        private static string UpstreamLogDetails(Rkd.Problems.HttpProblem upstream) =>
+            $"Upstream problem: status={upstream.Status} code={upstream.Code} traceId={upstream.TraceId ?? "-"} " +
+            $"instance={upstream.Instance ?? "-"} detail={upstream.Detail ?? "-"}";
 
         private static string? SafeDetail(int status) => status switch
         {

@@ -47,6 +47,22 @@ namespace Rkd.Scalar
         public string? Audience { get; set; }
 
         /// <summary>
+        /// Extra audiences written to the issued tokens (<c>aud</c> becomes an array: <see cref="Audience"/> first) and
+        /// accepted when validating — for tokens this application issues and also sends to other APIs.
+        /// </summary>
+        /// <example><code>"Jwt": { "Audience": "my-app", "AdditionalAudiences": [ "ia.dataapi" ] }</code></example>
+        public string[] AdditionalAudiences { get; set; } = [];
+
+        /// <summary><see cref="Audience"/> followed by <see cref="AdditionalAudiences"/>, without blanks or repetitions.</summary>
+        internal IReadOnlyList<string> AllAudiences =>
+            new[] { Audience }
+                .Concat(AdditionalAudiences ?? [])
+                .Where(audience => !string.IsNullOrWhiteSpace(audience))
+                .Select(audience => audience!.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+        /// <summary>
         /// Lifetime of issued tokens, in minutes. Defaults to 60.
         /// </summary>
         public int ExpirationInMinutes { get; set; } = 60;

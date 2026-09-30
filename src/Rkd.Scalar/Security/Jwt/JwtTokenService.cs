@@ -80,8 +80,19 @@ namespace Rkd.Scalar.Security.Jwt
                 if (!string.IsNullOrEmpty(_options.Issuer))
                     writer.WriteString("iss", _options.Issuer);
 
-                if (!string.IsNullOrEmpty(_options.Audience))
-                    writer.WriteString("aud", _options.Audience);
+                var audiences = _options.AllAudiences;
+
+                if (audiences.Count == 1)
+                {
+                    writer.WriteString("aud", audiences[0]);
+                }
+                else if (audiences.Count > 1)
+                {
+                    writer.WriteStartArray("aud");
+                    foreach (var audience in audiences)
+                        writer.WriteStringValue(audience);
+                    writer.WriteEndArray();
+                }
 
                 writer.WriteNumber("iat", issuedAt.ToUnixTimeSeconds());
                 writer.WriteNumber("nbf", issuedAt.ToUnixTimeSeconds());

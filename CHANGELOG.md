@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.7.0
+
+### Added
+
+- `JwtOptions.AdditionalAudiences` (bindable from the `Jwt` section): issued tokens carry
+  `"aud": [Audience, ...AdditionalAudiences]` and validation accepts all of them.
+- `RkdJwtTokenOptions.ForwardIncomingToken`: `AddRkdJwtToken` forwards the `Authorization: Bearer` of the current
+  request (the logged user's token) and issues a service token only when there is no request or no Bearer token.
+- `RkdProblemDetailsOptions.MapUpstreamProblems()`: an `HttpProblemException` (Rkd.Problems) becomes the same 4xx
+  (status, `code`, `title`, `detail`, `errors`) or a `502` for 5xx; the other API's status, code and `traceId` go to
+  the log.
+- Rkd.Scalar references **Rkd.Problems**: the members (`code`, `traceId`, `errors`), `VALIDATION_ERROR`, the default
+  codes and the media type come from its shared constants (identical values).
+
+### Fixed
+
+- PEM private keys (`PrivateKeyPem` / `PrivateKeyPath`: PKCS#8, PKCS#1 and SEC1 on P-256/P-384/P-521) are decoded in
+  managed code and imported with `ImportParameters`, so they load on IIS application pools without
+  "Load User Profile", where `ImportFromPem` failed with `CryptographicException: The system cannot find the file
+  specified`. Other formats keep using `ImportFromPem`.
+
 ## 2.6.0
 
 ### Added
