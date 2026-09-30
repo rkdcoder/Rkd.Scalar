@@ -115,30 +115,48 @@ namespace Rkd.Scalar.Extensions
             var provider =
                 app.Services.GetService<IApiVersionDescriptionProvider>();
 
-            app.MapScalarApiReference(options.ScalarRoutePrefix, opt =>
+            if (options.VersionSelector)
             {
-                opt.Title = options.Title;
-                opt.Theme = options.Theme;
-                opt.OpenApiRoutePattern = options.OpenApiRoutePattern;
+                ScalarDocumentSelector.UseVersionRedirect(app, options.ScalarRoutePrefix);
 
-                options.ConfigureScalar?.Invoke(opt);
-
-                if (provider != null)
+                app.MapScalarApiReference(options.ScalarRoutePrefix, (opt, context) =>
                 {
-                    foreach (var description in provider.ApiVersionDescriptions)
+                    ApplyScalarOptions(opt, options);
+                    ScalarDocumentSelector.AddDocuments(opt, context);
+                });
+            }
+            else
+            {
+                app.MapScalarApiReference(options.ScalarRoutePrefix, opt =>
+                {
+                    ApplyScalarOptions(opt, options);
+
+                    if (provider != null)
                     {
-                        opt.AddDocument(description.GroupName);
+                        foreach (var description in provider.ApiVersionDescriptions)
+                        {
+                            opt.AddDocument(description.GroupName);
+                        }
                     }
-                }
-                else
-                {
-                    opt.AddDocument("v1");
-                }
-            });
+                    else
+                    {
+                        opt.AddDocument("v1");
+                    }
+                });
+            }
 
             ReservedRouteGuard.EnsureControllersDoNotUseReservedRoutes(app);
 
             return app;
+        }
+
+        private static void ApplyScalarOptions(ScalarOptions scalar, RkdScalarConfiguration options)
+        {
+            scalar.Title = options.Title;
+            scalar.Theme = options.Theme;
+            scalar.OpenApiRoutePattern = options.OpenApiRoutePattern;
+
+            options.ConfigureScalar?.Invoke(scalar);
         }
 
         private static RkdScalarConfiguration BindConfiguration(WebApplication app, string sectionName)

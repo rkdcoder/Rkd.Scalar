@@ -85,7 +85,7 @@ app.UseRkdScalar();                 // RkdScalar section of appsettings.json (op
 Run the application and open:
 
 ```
-/scalar/v1
+/scalar
 ```
 
 You now have:
@@ -182,6 +182,7 @@ app.Run();
 | `ScalarRoutePrefix`   | `/scalar`                       | Route of the Scalar UI                                                      |
 | `OpenApiRoutePattern` | `/openapi/{documentName}.json`  | Route of the OpenAPI documents (Scalar and UI protection follow it)         |
 | `Enabled`             | `true`                          | `false` hides the UI and documents (authentication keeps working)           |
+| `VersionSelector`     | `true`                          | Lists every API version in the Scalar dropdown (`false`: one page per version) |
 
 Turning the documentation off in production is just configuration:
 
@@ -831,6 +832,26 @@ public class PaymentController : ControllerBase
 
 Scalar automatically generates a document for each version.
 
+## Version selector
+
+Every version is listed in a **dropdown at the top of the Scalar sidebar** — no
+need to type `v1` or `v2` in the URL:
+
+- `/scalar` opens the newest non-deprecated version, with the others one click away
+- `/scalar/v1` (old links and bookmarks keep working) opens the dropdown with `v1` selected
+- versions are listed newest first, and deprecated versions are flagged:
+
+```csharp
+[ApiVersion("1.0", Deprecated = true)]   // shown as "v1 (deprecated)"
+[ApiVersion("2.0")]
+```
+
+Prefer one separate page per version? Turn it off:
+
+```json
+{ "RkdScalar": { "VersionSelector": false } }
+```
+
 ---
 
 # Launch Scalar Automatically
@@ -839,7 +860,7 @@ In `Properties/launchSettings.json`:
 
 ```json
 "launchBrowser": true,
-"launchUrl": "scalar/v1"
+"launchUrl": "scalar"
 ```
 
 ---
