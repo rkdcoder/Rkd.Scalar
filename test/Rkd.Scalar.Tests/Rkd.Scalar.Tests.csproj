@@ -31,6 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Rkd.Scalar\Rkd.Scalar.csproj" />
     <ProjectReference Include="..\..\src\Rkd.Scalar.HttpLogging.SqlServer\Rkd.Scalar.HttpLogging.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\Rkd.Scalar.FluentValidation\Rkd.Scalar.FluentValidation.csproj" />
   </ItemGroup>
 
   <ItemGroup>

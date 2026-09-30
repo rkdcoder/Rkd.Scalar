@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Rkd.Scalar</RootNamespace>
+
+    <PackageId>Rkd.Scalar.FluentValidation</PackageId>
+    <Version>2.8.0</Version>
+    <Authors>Rodrigo Kmiecik</Authors>
+    <Company>rkd.com.br</Company>
+    <Product>Rkd.Scalar</Product>
+    <Title>Rkd.Scalar FluentValidation integration</Title>
+
+    <Description>FluentValidation integration for Rkd.Scalar: WithFluentValidation() runs the IValidator of every controller action argument (and of minimal API endpoints with .WithFluentValidation()) and answers with the standard Rkd.Scalar validation problem (errors by field named with the JSON naming policy, code VALIDATION_ERROR, traceId).</Description>
+
+    <PackageTags>rkd-scalar;fluentvalidation;validation;aspnetcore;problem-details;rfc9457;minimal-api</PackageTags>
+    <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
+
+    <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- First version: add PackageValidationBaselineVersion after it is published. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rkd.Scalar\Rkd.Scalar.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Rkd.Scalar\Media\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rkd.Scalar.Tests" />
+  </ItemGroup>
+
+</Project>

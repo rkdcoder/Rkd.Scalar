@@ -63,7 +63,9 @@ namespace Microsoft.AspNetCore.Builder
             if (!options.Enabled)
                 return app;
 
-            app.MapOpenApi(options.OpenApiRoutePattern);
+            // The documentation is governed by "Enabled" and WithUiProtection, never by the API authorization:
+            // a FallbackPolicy requiring authenticated users must not hide it.
+            app.MapOpenApi(options.OpenApiRoutePattern).AllowAnonymous();
 
             if (options.VersionSelector)
             {
@@ -73,7 +75,7 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     ApplyScalarOptions(scalar, options);
                     ScalarDocumentSelector.AddDocuments(scalar, context);
-                });
+                }).AllowAnonymous();
             }
             else
             {
@@ -91,7 +93,7 @@ namespace Microsoft.AspNetCore.Builder
 
                     foreach (var description in provider.ApiVersionDescriptions)
                         scalar.AddDocument(description.GroupName);
-                });
+                }).AllowAnonymous();
             }
 
             ReservedRouteGuard.EnsureControllersDoNotUseReservedRoutes(app);

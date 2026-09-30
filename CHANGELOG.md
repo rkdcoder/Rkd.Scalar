@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.8.0
+
+### Fixed
+
+- The OpenAPI documents and the Scalar UI allow anonymous access: with a `FallbackPolicy` requiring authenticated
+  users, `/scalar` and `/openapi/{documentName}.json` answered 401. Access stays governed by `RkdScalar:Enabled` and
+  `WithUiProtection`.
+
+### Added
+
+- `RkdPem.ImportPrivateKey` / `ImportECDsaPrivateKey` / `ImportRsaPrivateKey`: the IIS-safe PEM import of 2.7.0 for
+  keys managed outside `IJwtTokenService`.
+- New package **Rkd.Scalar.FluentValidation**: `WithFluentValidation(assemblies)` registers the validators and
+  validates every controller action argument; `.WithFluentValidation()` on minimal API endpoints and groups. Invalid
+  requests answer with the Rkd.Scalar validation problem, field names following the JSON naming policy.
+
 ## 2.7.0
 
 ### Added

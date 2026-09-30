@@ -140,6 +140,10 @@ app.Run();
 | `VersionSelector`     | `true`                          | Lists every API version in the Scalar dropdown (`false`: one page per version) |
 | `DarkMode`            | Scalar default                  | Opens the UI in dark (`true`) or light (`false`) mode                        |
 
+The documentation endpoints allow anonymous access, so an application that protects every route with a
+`FallbackPolicy` (`RequireAuthenticatedUser()`) keeps its documentation reachable: who sees it is decided by
+`Enabled` and `WithUiProtection`, not by the API authorization.
+
 Turning the documentation off in production is just configuration:
 
 ```json
@@ -375,7 +379,19 @@ Validation is ASP.NET Core's, standardized by Rkd.Scalar — every validation er
 - **Controllers** — `[ApiController]` validates DataAnnotations automatically.
 - **Minimal APIs (.NET 10)** — call `builder.Services.AddValidation();` in your application. It is a source
   generator that only runs in the project that calls it, so a library cannot call it for you.
-- **Your own rules (FluentValidation, RuleWeaver, custom)** — run them and throw or return the result:
+- **FluentValidation** — `dotnet add package Rkd.Scalar.FluentValidation`, no filter of your own:
+
+```csharp
+builder.AddRkdScalar()
+    .WithProblemDetails()
+    .WithFluentValidation(typeof(Program).Assembly);   // registers the validators; validates controller arguments
+
+app.MapGroup("/api/orders").WithFluentValidation();     // minimal APIs: per endpoint or group
+```
+
+  Every argument with an `IValidator<T>` is validated (async rules included) after the `[ApiController]` model state
+  check; `errors` use the JSON naming policy (`Items[0].UnitPrice` → `items[0].unit_price` with snake_case).
+- **Your own rules (RuleWeaver, custom)** — run them and throw or return the result:
 
 ```csharp
 var errors = validator.Validate(request);   // any library
@@ -914,6 +930,11 @@ PEM private keys (PKCS#8 `PRIVATE KEY`, PKCS#1 `RSA PRIVATE KEY`, SEC1 `EC PRIVA
 decoded in managed code and imported as parameters, so they also load on **IIS application pools without
 "Load User Profile"** (the default `ApplicationPoolIdentity`), where `ImportFromPem` fails with
 `The system cannot find the file specified`. Other formats (e.g. encrypted keys) use `ImportFromPem`.
+The same import is public for keys you manage yourself (e.g. stored in a database):
+
+```csharp
+using var ecdsa = RkdPem.ImportECDsaPrivateKey(pemFromDatabase);   // also ImportRsaPrivateKey / ImportPrivateKey
+```
 
 ```json
 {
