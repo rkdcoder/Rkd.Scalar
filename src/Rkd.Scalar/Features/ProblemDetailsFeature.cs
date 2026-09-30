@@ -85,6 +85,8 @@ namespace Rkd.Scalar.Features
             }
 
             problem.Extensions.TryAdd("traceId", Activity.Current?.Id ?? http.TraceIdentifier);
+
+            HttpLogging.HttpLogItems.SetProblem(http, problem);
         }
     }
 }

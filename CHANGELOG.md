@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.5.0
+
+### Added
+
+- **HTTP logging** with `WithHttpLogging(options)`: every request captured by the outermost middleware (status,
+  duration, route pattern, user, headers, request/response bodies, problem `code`, unhandled exception, trace id),
+  queued in a bounded in-memory queue (never blocks, drops when full) and written in batches by a background service
+  to the registered `IHttpLogSink`s (`WithHttpLogSink<T>()`), isolated from each other; queued entries are written on
+  shutdown. Bodies are captured as they are read/written (no extra buffering, streaming preserved, text only, up to
+  `MaxBodyBytes`); credentials are redacted (Authorization scheme kept, cookies, API key header, token query
+  parameters); sensitive paths and the login endpoint never store bodies; Scalar/OpenAPI routes are excluded.
+  Configurable user claims (`UserNameClaimTypes`, `UserIdClaimTypes`), `Filter`, `Enrich` and the `HttpLogging`
+  configuration section.
+- New package **Rkd.Scalar.HttpLogging.SqlServer**: `WriteHttpLogsToSqlServer(...)` writes each batch with
+  `SqlBulkCopy`, optionally creates the schema/table (`CreateTable`, or `SqlServerHttpLogTable.CreateScript`), writes
+  only the columns the table has and cuts oversized values.
+
 ## 2.4.0
 
 ### Added

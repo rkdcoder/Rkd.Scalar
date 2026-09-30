@@ -45,6 +45,8 @@ namespace Rkd.Scalar.Errors
             problem.Status ??= context.Response.StatusCode;
             context.Response.StatusCode = problem.Status.Value;
 
+            HttpLogging.HttpLogItems.SetProblem(context, problem);
+
             var service = context.RequestServices.GetService<IProblemDetailsService>();
 
             var problemContext = new ProblemDetailsContext

@@ -25,6 +25,9 @@ It combines documentation, authentication helpers and security protections into 
 - **Standardized errors (RFC 9457)** — every exception and error response becomes `application/problem+json`,
   with exception mapping, stable error **codes** (`RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", …)`, `RkdResults`),
   error responses documented in Scalar and safe defaults (no internals leaked in production)
+- **HTTP logging to any destination** — every request (status, duration, user, bodies, error `code`, exception)
+  queued in memory and written in batches by a background service; SQL Server with `Rkd.Scalar.HttpLogging.SqlServer`
+  or your own `IHttpLogSink`, credentials redacted, the API is never slowed down
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
@@ -517,6 +520,109 @@ automatically, so it also catches errors from other middlewares — no `UseExcep
 you add your own `app.UseExceptionHandler(...)`, yours runs first for the requests it handles.
 In Development, ASP.NET Core's developer exception page still writes its own error log line, but the
 response is the same problem details as in production (plus the exception details).
+
+---
+
+# HTTP Logging
+
+Every request can be logged to a database — or anywhere else — without slowing down the API:
+
+```
+request ──► capture (outermost middleware) ──► bounded in-memory queue ──► background writer ──► sinks (batches)
+             never waits, never throws           full? entry dropped         SQL Server, your own IHttpLogSink…
+```
+
+```csharp
+// dotnet add package Rkd.Scalar.HttpLogging.SqlServer
+builder.AddRkdScalar()
+    .WithHttpLogging(o => o.ExcludedPaths.Add("/health"))
+    .WriteHttpLogsToSqlServer(builder.Configuration.GetConnectionString("Logs")!, "logs.HttpRequests", createTable: true);
+```
+
+Or entirely from configuration — `builder.AddRkdScalar().WriteHttpLogsToSqlServer();`:
+
+```json
+{
+  "ConnectionStrings": { "Logs": "Server=...;Database=...;..." },
+  "HttpLogging": {
+    "MaxBodyBytes": 32768,
+    "ExcludedPaths": [ "/health" ],
+    "SensitivePaths": [ "/api/v1/users/password" ],
+    "UserNameClaimTypes": [ "cpf" ],
+    "SqlServer": { "ConnectionStringName": "Logs", "Table": "logs.HttpRequests", "CreateTable": true }
+  }
+}
+```
+
+## What each entry has
+
+`TraceId` (the same `traceId` of the problem details responses), `StartedAt` (UTC), `Duration`, `Method`, `Path`,
+`QueryString`, `RoutePattern` (`api/v{version}/orders/{id}` — group by endpoint), `StatusCode`, `ErrorCode` (the
+problem `code`, e.g. `CUSTOMER_NOT_FOUND`), `Exception` (unhandled 5xx only), `UserName`, `UserId`, `ClientIp`,
+`UserAgent`, `RequestHeaders`, request and response bodies, `ResponseSize`, `Properties` (your own values) and more.
+
+## Safe and cheap by design
+
+- **Never blocks**: the queue has a fixed capacity (`QueueCapacity`, 10,000); when the sinks cannot keep up, new
+  entries are dropped and a warning is logged once a minute. A failing sink is logged (once a minute) and skipped.
+- **No extra buffering**: bodies are captured while the application reads and writes them, up to `MaxBodyBytes`
+  (32 KB). Streaming responses (server-sent events, downloads) keep streaming; binary and multipart bodies are not
+  captured (only their size).
+- **Batches**: sinks receive up to `BatchSize` (100) entries per call — the SQL Server sink writes each batch with
+  one `SqlBulkCopy`.
+- **Shutdown**: queued entries are written when the application stops (`ShutdownTimeout`, 5 s).
+- **Redaction**: `Authorization` keeps only its scheme (`Bearer [REDACTED]`); `Cookie`, `X-API-Key` and the
+  `WithApiKeyAuth` header are redacted, as the query parameters `access_token`, `token`, `api_key`, `password`…
+  Bodies of `SensitivePaths` and of the `WithJwtLoginEndpoint` route are never stored.
+- **Scalar UI and OpenAPI documents** are not logged (`ExcludeDocumentation`).
+
+## Options
+
+| Option                    | Default     | Description                                                            |
+| ------------------------- | ----------- | ---------------------------------------------------------------------- |
+| `Enabled`                 | `true`      | Turns the capture off (e.g. per environment)                           |
+| `ExcludedPaths`           | —           | Not logged (by segment: `/health` excludes `/health/ready`)             |
+| `SensitivePaths`          | login route | Bodies replaced by `[REDACTED]`                                        |
+| `CaptureRequestBody` / `CaptureResponseBody` / `CaptureRequestHeaders` | `true` | What is captured      |
+| `MaxBodyBytes`            | `32768`     | Bytes kept of each body (`RequestBodyTruncated` / `ResponseBodyTruncated`) |
+| `RedactedHeaders` / `RedactedQueryParameters` | see above | Values replaced by `[REDACTED]`                        |
+| `UserNameClaimTypes`      | `ClaimTypes.Name`, `name`, `preferred_username`, `unique_name`, email | First claim found becomes `UserName` |
+| `UserIdClaimTypes`        | `ClaimTypes.NameIdentifier`, `sub`, `oid` | First claim found becomes `UserId`       |
+| `QueueCapacity` / `BatchSize` / `ShutdownTimeout` | `10000` / `100` / `5 s` | Queue and writer                      |
+| `ApplicationName`         | host name   | Written to every entry                                                 |
+| `Filter`                  | —           | `context => bool`, after the response (e.g. only errors)               |
+| `Enrich`                  | —           | `(context, entry) => entry.Properties["tenant"] = ...`                 |
+
+```csharp
+.WithHttpLogging(o =>
+{
+    o.UserNameClaimTypes = ["cpf"];                                   // users identified by CPF
+    o.Filter = context => context.Response.StatusCode >= 400;         // only errors
+    o.Enrich = (context, entry) => entry.Properties["tenant"] = context.User.FindFirst("tenant")?.Value;
+})
+```
+
+## Your own destination
+
+```csharp
+public sealed class ElasticHttpLogSink(ElasticClient client) : IHttpLogSink
+{
+    public async Task WriteAsync(IReadOnlyList<HttpLogEntry> entries, CancellationToken cancellationToken) =>
+        await client.BulkAsync(entries, cancellationToken);
+}
+
+builder.AddRkdScalar().WithHttpLogSink<ElasticHttpLogSink>();   // several sinks can be combined
+```
+
+Sinks are singletons called by the background writer — never by a request. Without any sink the application fails
+at startup, so a missing destination is never silent.
+
+## SQL Server
+
+`Rkd.Scalar.HttpLogging.SqlServer` writes each batch with `SqlBulkCopy`. `CreateTable = true` creates the schema and
+the table (indexed by `StartedAt` and `TraceId`) on the first write; without DDL permissions, run
+`SqlServerHttpLogTable.CreateScript("logs.HttpRequests")` once. Only the columns your table has are written, so you
+can drop the ones you don't want. Oversized values are cut to the column size, so one request never rejects a batch.
 
 ---
 
@@ -1062,6 +1168,9 @@ The section also accepts `{ "Username": "...", "Password": "..." }`. Protection 
 | `WithApiModules(configure)`                                         | Global route template of `[ApiModule]` controllers             |
 | `WithJsonNaming(policy)`                                            | Same JSON naming in controllers, minimal APIs, OpenAPI and validation errors |
 | `ConfigureJson(configure)`                                          | Any JSON setting, applied to controllers and minimal APIs/OpenAPI |
+| `WithHttpLogging(configure?)`                                       | HTTP request logging (queue + background writer)               |
+| `WithHttpLogSink<TSink>()` / `WithHttpLogSink(factory)`             | Destination of the HTTP logs                                   |
+| `WriteHttpLogsToSqlServer(...)`                                     | SQL Server destination (`Rkd.Scalar.HttpLogging.SqlServer`)    |
 | `WithLowercaseRouting()`                                            | Lowercase URLs and query strings                               |
 
 `IHttpClientBuilder.AddRkdJwtToken(identity)` authenticates outgoing calls with Rkd.Scalar tokens.
