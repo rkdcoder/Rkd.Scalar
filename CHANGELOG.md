@@ -4,6 +4,30 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.3.0
+
+### Added
+
+- **Error codes**: every problem details response has a machine-readable `code` — the one you set,
+  `VALIDATION_ERROR` for validation problems or the status reason phrase (`NOT_FOUND`, `UNAUTHORIZED`,
+  `INTERNAL_SERVER_ERROR`…). `IncludeDefaultCodes = false` keeps only explicit codes.
+- `RkdError`: `throw RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", "…")` — `BadRequest`, `Unauthorized`,
+  `Forbidden`, `NotFound`, `Conflict`, `UnprocessableEntity`, `TooManyRequests`, `Create(status, code)` and
+  `Validation(errors)` (same shape as ASP.NET Core validation, for FluentValidation/RuleWeaver/custom rules).
+- `RkdResults` / `RkdProblemResult`: return the same problems from controllers (`IActionResult`,
+  `ActionResult<T>`) and minimal APIs (`IResult`, `Results<…>`), with or without `WithProblemDetails()`.
+- `ProblemException.Code` and `ProblemException.ToProblemDetails()` (reuse in `options.Map<T>` factories).
+- **OpenAPI error responses** (`DocumentErrorResponses`, on by default): 400 for operations with input,
+  401/403 for protected operations, 429 for rate limited operations and 500 for all, with the
+  `application/problem+json` schema documenting `code` and `traceId`; declared error responses
+  (`[ProducesResponseType(404)]`…) are moved to `application/problem+json`.
+
+### Changed
+
+- Outside Development, controller JSON conversion errors no longer expose .NET type names
+  (`AllowInputFormatterExceptionMessages` follows `IncludeExceptionDetails`), and malformed request details
+  are generic.
+
 ## 2.2.0
 
 ### Added

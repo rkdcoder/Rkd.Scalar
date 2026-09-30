@@ -22,7 +22,8 @@ It combines documentation, authentication helpers and security protections into 
 - **JWT Bearer authentication** — HMAC secret, **RSA / ECDSA keys**, **OIDC authority (JWKS)** or **async / KMS signing**,
   with **standard claim names** (`sub`, `name`, `role`…) and `iat` / `jti`
 - **Standardized errors (RFC 9457)** — every exception and error response becomes `application/problem+json`,
-  with exception mapping and safe defaults (no internals leaked in production)
+  with exception mapping, stable error **codes** (`RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", …)`, `RkdResults`),
+  error responses documented in Scalar and safe defaults (no internals leaked in production)
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
@@ -234,6 +235,7 @@ Content-Type: application/problem+json
   "status": 404,
   "detail": "Order 42 was not found.",
   "instance": "/api/v1/orders/42",
+  "code": "ORDER_NOT_FOUND",
   "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 }
 ```
@@ -246,14 +248,15 @@ What is covered, with no extra code:
 | Mapped exception (`options.Map<T>(...)`)                 | Your status code, title and message                             |
 | `throw new ProblemException(...)`                        | Exactly the status, title, detail, type and extensions you set  |
 | Error responses without body (unknown route, 405, 415, 401/403 from authorization…) | Problem details with the same status code        |
-| `Results.Problem`, `ValidationProblem`, `[ApiController]` model validation | Enriched with `instance` and `traceId`          |
-| Malformed JSON / bad request binding                     | `400` problem details                                           |
+| `throw RkdError.Conflict("CODE", ...)` / `return RkdResults.NotFound("CODE", ...)` | The status with your stable `code`      |
+| `Results.Problem`, `ValidationProblem`, `[ApiController]` model validation, `AddValidation()` | Enriched with `instance`, `traceId` and `code` (`VALIDATION_ERROR`) |
+| Malformed JSON / bad request binding                     | `400` problem details — no .NET type names outside Development  |
 | Client aborted the request                               | `499`, no error log                                             |
 
-The response is always JSON (even for `Accept: text/html`) and the `traceId` matches your logs and
-distributed traces. Responses produced from exceptions discard anything the failed request had written
-and are sent with `Cache-Control: no-store`; for body-less responses, headers such as `WWW-Authenticate`
-are preserved.
+The response is always JSON (even for `Accept: text/html`), the `traceId` matches your logs and
+distributed traces, and every problem has a machine-readable [`code`](#error-codes). Responses produced
+from exceptions discard anything the failed request had written and are sent with `Cache-Control: no-store`;
+for body-less responses, headers such as `WWW-Authenticate` are preserved.
 
 ## Mapping your exceptions
 
@@ -283,6 +286,120 @@ Mappings match derived types (the most specific mapping wins). Framework excepti
 `KeyNotFoundException` or `ArgumentException` are **not** mapped by default, because they are often
 thrown by bugs and their messages may contain internal details — map them explicitly if you want to.
 
+## Error codes
+
+Messages change and get translated; clients should branch on a **stable code**. Every problem carries a
+`code` member:
+
+| Problem                                   | `code`                                                     |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| `RkdError` / `RkdResults` / `ProblemException { Code = ... }` | the code you chose (`CUSTOMER_ALREADY_EXISTS`) |
+| Validation (`[ApiController]`, `AddValidation()`, `ValidationProblem`, `RkdError.Validation`) | `VALIDATION_ERROR` |
+| Anything else                             | the status reason phrase: `NOT_FOUND`, `UNAUTHORIZED`, `FORBIDDEN`, `TOO_MANY_REQUESTS`, `INTERNAL_SERVER_ERROR`… |
+
+Throw from anywhere (services, handlers, domain) with `RkdError`:
+
+```csharp
+throw RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", "Já existe um cliente com este CPF.");
+throw RkdError.NotFound("CUSTOMER_NOT_FOUND", $"Customer {id} was not found.");
+throw RkdError.UnprocessableEntity("CREDIT_LIMIT_EXCEEDED", "The credit limit was exceeded.");
+throw RkdError.Create(StatusCodes.Status402PaymentRequired, "PAYMENT_REQUIRED");
+```
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+  "title": "Conflict",
+  "status": 409,
+  "detail": "Já existe um cliente com este CPF.",
+  "instance": "/customers",
+  "code": "CUSTOMER_ALREADY_EXISTS",
+  "traceId": "00-…"
+}
+```
+
+Keep the codes as constants (`public static class CustomerErrors { public const string AlreadyExists = "CUSTOMER_ALREADY_EXISTS"; }`)
+so they can be shared with clients and tests. Codes accept letters, digits, `_`, `-` and `.`; invalid codes
+fail when the error is created. Mapped exceptions can use the same shape:
+
+```csharp
+options.Map<DuplicatedDocumentException>(ex => RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", ex.Message).ToProblemDetails());
+```
+
+Set `IncludeDefaultCodes = false` to send only the codes you set explicitly.
+
+## Returning problems (RkdResults)
+
+When the flow is expected (not found, conflict…), return instead of throwing. `RkdResults` has the same
+methods as `RkdError` and works in **controllers and minimal APIs**:
+
+```csharp
+// controller — IActionResult or ActionResult<T>
+[HttpGet("{id}")]
+public async Task<ActionResult<Customer>> Get(int id) =>
+    await _customers.FindAsync(id) is { } customer
+        ? customer
+        : RkdResults.NotFound("CUSTOMER_NOT_FOUND", $"Customer {id} was not found.");
+
+// minimal API — IResult or Results<...>
+app.MapGet("/customers/{id}", async Task<Results<Ok<Customer>, RkdProblemResult>> (int id, CustomerStore store) =>
+    await store.FindAsync(id) is { } customer
+        ? TypedResults.Ok(customer)
+        : RkdResults.NotFound("CUSTOMER_NOT_FOUND"));
+```
+
+Success responses keep the standard `Ok`, `Created`, `NoContent`, `TypedResults` — there is no
+`{ success, data }` envelope: HTTP status codes already say whether it worked, and wrappers break OpenAPI
+schemas and generated clients. `RkdResults` works even without `WithProblemDetails()`; with it, the response
+also gets `instance`, `traceId` and your `Customize`.
+
+## Validation
+
+Validation is ASP.NET Core's, standardized by Rkd.Scalar — every validation error has the same shape
+(`errors` by field, `code: VALIDATION_ERROR`, `traceId`) whatever produced it:
+
+- **Controllers** — `[ApiController]` validates DataAnnotations automatically.
+- **Minimal APIs (.NET 10)** — call `builder.Services.AddValidation();` in your application. It is a source
+  generator that only runs in the project that calls it, so a library cannot call it for you.
+- **Your own rules (FluentValidation, RuleWeaver, custom)** — run them and throw or return the result:
+
+```csharp
+var errors = validator.Validate(request);   // any library
+if (errors.Count > 0)
+    throw RkdError.Validation(errors);      // IDictionary<string, string[]>
+
+// or, in an endpoint
+return RkdResults.Validation(errors);
+```
+
+Or map the library's exception once:
+
+```csharp
+options.Map<ValidationException>(ex => RkdError.Validation(
+    ex.Errors.GroupBy(e => e.PropertyName).ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()))
+    .ToProblemDetails());
+```
+
+Outside Development, JSON conversion errors no longer expose .NET types
+(`"The JSON value could not be converted to System.Int32…"` becomes `"The input was not valid."`).
+
+## Errors in the OpenAPI document
+
+Scalar shows the error responses of every operation, with the `application/problem+json` schema (including
+`code` and `traceId`). Only what is certain is added — nothing is guessed:
+
+| Response | Added when                                                                      |
+| -------- | ------------------------------------------------------------------------------- |
+| `400`    | the operation has parameters or a body (`HttpValidationProblemDetails` schema)  |
+| `401`, `403` | the operation requires authorization (and is not `[AllowAnonymous]`)        |
+| `429`    | the operation has rate limiting (`[EnableRateLimiting]` / `RequireRateLimiting`) |
+| `500`    | always                                                                          |
+
+Business errors (`404`, `409`, `422`…) depend on your code, so declare them as usual —
+`[ProducesResponseType(StatusCodes.Status404NotFound)]`, `.ProducesProblem(404)` or
+`/// <response code="404">` — and they get the problem schema as `application/problem+json`. Responses you
+declare are never overwritten. Disable with `DocumentErrorResponses = false`.
+
 ## Throwing problems directly
 
 ```csharp
@@ -291,6 +408,7 @@ throw ProblemException.NotFound($"Order {id} was not found.");
 throw new ProblemException(StatusCodes.Status409Conflict, "Duplicated order", $"Order {id} already exists.")
 {
     Type = "https://errors.mycompany.com/duplicated-order",
+    Code = "DUPLICATED_ORDER",
     Extensions = { ["orderId"] = id }
 };
 ```
@@ -302,6 +420,8 @@ throw new ProblemException(StatusCodes.Status409Conflict, "Duplicated order", $"
 | `IncludeExceptionDetails` | Development only      | Adds `detail` and an `exception` object (type, message, stack trace) to unexpected errors |
 | `HandleStatusCodes`       | `true`                | Converts body-less 4xx/5xx responses; opt out per endpoint with `[SkipStatusCodePages]` |
 | `IncludeInstance`         | `true`                | Sets `instance` to the request path                                      |
+| `IncludeDefaultCodes`     | `true`                | Adds `code` to problems without one (`VALIDATION_ERROR`, `NOT_FOUND`…)   |
+| `DocumentErrorResponses`  | `true`                | Documents 400/401/403/429/500 problem responses in OpenAPI / Scalar      |
 | `Customize`               | —                     | Adds or changes members of every problem (e.g. `service`, `tenant`)      |
 
 ```csharp
@@ -352,7 +472,7 @@ builder.AddRkdScalar()
     });
 ```
 
-Problem details members (`type`, `title`, `status`, `detail`, `instance`) and the login response
+Problem details members (`type`, `title`, `status`, `detail`, `instance`, `code`, `traceId`) and the login response
 (`access_token`, `expires_in`…) keep their standard names regardless of the policy.
 
 ---

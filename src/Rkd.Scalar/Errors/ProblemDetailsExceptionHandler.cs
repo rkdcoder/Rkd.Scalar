@@ -75,30 +75,22 @@ namespace Rkd.Scalar.Errors
         private MvcProblemDetails CreateProblem(HttpContext context, Exception exception)
         {
             if (exception is ProblemException problemException)
-            {
-                var problem = new MvcProblemDetails
-                {
-                    Status = problemException.StatusCode,
-                    Title = problemException.Title,
-                    Detail = problemException.Detail,
-                    Type = problemException.Type
-                };
-
-                foreach (var (key, value) in problemException.Extensions)
-                    problem.Extensions[key] = value;
-
-                return problem;
-            }
+                return problemException.ToProblemDetails();
 
             if (_options.TryMap(exception, context, out var mapped))
                 return mapped;
 
             if (exception is BadHttpRequestException badRequest)
             {
+                // Framework messages name parameters and .NET types; outside Development a safe text is sent instead.
                 return new MvcProblemDetails
                 {
                     Status = badRequest.StatusCode,
-                    Detail = _includeDetails ? badRequest.Message : null
+                    Detail = _includeDetails
+                        ? badRequest.Message
+                        : badRequest.StatusCode == StatusCodes.Status400BadRequest
+                            ? "The request could not be read. Check the route, query string and body format."
+                            : null
                 };
             }
 
