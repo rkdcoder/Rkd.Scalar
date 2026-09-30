@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.5.1
+
+### Fixed
+
+- With `WithJsonNaming` (snake_case, kebab-case…) and `WithProblemDetails()`, problem details written by ASP.NET
+  Core's default writer — unknown routes (404), 405, `Results.Problem`, `RkdResults` and exceptions in minimal
+  APIs — carried the trace id twice (`trace_id` and `traceId`). The member is now always `traceId`, as documented.
+
 ## 2.5.0
 
 ### Added

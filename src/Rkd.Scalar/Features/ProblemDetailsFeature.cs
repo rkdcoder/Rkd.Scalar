@@ -9,12 +9,16 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Rkd.Scalar.Errors;
 using System.Diagnostics;
+using Microsoft.Extensions.Options;
+using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 using MvcJsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
 
 namespace Rkd.Scalar.Features
 {
     internal sealed class ProblemDetailsFeature : IScalarFeature
     {
+        private const string TraceIdName = "traceId";
+
         private readonly RkdProblemDetailsOptions _options;
 
         public ProblemDetailsFeature(RkdProblemDetailsOptions options)
@@ -84,7 +88,18 @@ namespace Rkd.Scalar.Features
                     : ProblemCodes.FromStatus(problem.Status ?? http.Response.StatusCode);
             }
 
-            problem.Extensions.TryAdd("traceId", Activity.Current?.Id ?? http.TraceIdentifier);
+            // ASP.NET Core's default writer (404/405, Results.Problem, minimal APIs) names the trace id with the JSON
+            // naming policy ("trace_id" in snake_case); the contract name is always "traceId".
+            var namingPolicy = http.RequestServices.GetService<IOptions<HttpJsonOptions>>()?.Value.SerializerOptions.PropertyNamingPolicy;
+            var convertedTraceId = namingPolicy?.ConvertName(TraceIdName);
+
+            if (convertedTraceId is not null && convertedTraceId != TraceIdName &&
+                problem.Extensions.Remove(convertedTraceId, out var traceId))
+            {
+                problem.Extensions.TryAdd(TraceIdName, traceId);
+            }
+
+            problem.Extensions.TryAdd(TraceIdName, Activity.Current?.Id ?? http.TraceIdentifier);
 
             HttpLogging.HttpLogItems.SetProblem(http, problem);
         }
