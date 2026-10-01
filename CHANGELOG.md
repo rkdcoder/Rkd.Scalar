@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.8.1
+
+### Changed
+
+- Dependencies updated: Asp.Versioning 10.2.x, Scalar.AspNetCore 2.17.12, ASP.NET Core / Extensions 10.0.12 and
+  Microsoft.OpenApi 2.12.2 (3.x is incompatible with Microsoft.AspNetCore.OpenApi 10.x). No public API change.
+- README: "Reading errors in clients (Rkd.Problems)" — how Blazor, WPF, console/MCP and other backends read the
+  errors with Rkd.Problems.
+
 ## 2.8.0
 
 ### Fixed
