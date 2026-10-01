@@ -24,7 +24,8 @@ It combines documentation, authentication helpers and security protections into 
   (database / key registry), `JwtBearerOptions` hooks and **service tokens for outgoing `HttpClient` calls**
 - **Standardized errors (RFC 9457)** — every exception and error response becomes `application/problem+json`,
   with exception mapping, stable error **codes** (`RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", …)`, `RkdResults`),
-  error responses documented in Scalar and safe defaults (no internals leaked in production)
+  error responses documented in Scalar, safe defaults (no internals leaked in production) and a client package,
+  [Rkd.Problems](https://github.com/rkdcoder/Rkd.Problems), that reads them from any `HttpClient`
 - **HTTP logging to any destination** — every request (status, duration, user, bodies, error `code`, exception)
   queued in memory and written in batches by a background service; SQL Server with `Rkd.Scalar.HttpLogging.SqlServer`
   or your own `IHttpLogSink`, credentials redacted, the API is never slowed down
@@ -429,6 +430,34 @@ Business errors (`404`, `409`, `422`…) depend on your code, so declare them as
 `[ProducesResponseType(StatusCodes.Status404NotFound)]`, `.ProducesProblem(404)` or
 `/// <response code="404">` — and they get the problem schema as `application/problem+json`. Responses you
 declare are never overwritten. Disable with `DocumentErrorResponses = false`.
+
+## Reading errors in clients (Rkd.Problems)
+
+The clients of your API — Blazor WebAssembly, Blazor Server, WPF, console apps and MCP servers, other ASP.NET Core
+backends — read these errors with [Rkd.Problems](https://github.com/rkdcoder/Rkd.Problems), a dependency-free,
+trimmable package with the other side of the same contract:
+
+```
+dotnet add package Rkd.Problems
+```
+
+```csharp
+using var response = await http.PostAsJsonAsync("customers", customer, ct);
+await response.EnsureSuccessOrThrowProblemAsync(ct);   // HttpProblemException with Code, Detail, TraceId, Errors…
+```
+
+```csharp
+catch (HttpProblemException ex) when (ex.Problem.Code == CustomerErrors.AlreadyExists)
+{
+    warning = ex.Message;   // the detail you sent
+}
+```
+
+Responses that are not problem details (a proxy's HTML page, an empty body, another API's JSON) are read into the
+same `HttpProblem`, with the `code` derived exactly as the server does, so clients have a single error path.
+Rkd.Scalar references Rkd.Problems and writes the errors with its constants (`ProblemMembers.Code`,
+`ProblemMembers.TraceId`, `ProblemMembers.Errors`, `ProblemCodes.Validation`, `ProblemCodes.FromStatus`): server and
+clients read the contract from one place, and you can use them in your server code too.
 
 ## Errors of other APIs (MapUpstreamProblems)
 
