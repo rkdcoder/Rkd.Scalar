@@ -54,6 +54,7 @@ jobs:
       - name: Pack NuGet packages
         run: |
           dotnet pack src/Rkd.Scalar/Rkd.Scalar.csproj --configuration Release --no-build --output ./artifacts
+          dotnet pack src/Rkd.Scalar.HttpLogging.Postgres/Rkd.Scalar.HttpLogging.Postgres.csproj --configuration Release --no-build --output ./artifacts
           dotnet pack src/Rkd.Scalar.HttpLogging.SqlServer/Rkd.Scalar.HttpLogging.SqlServer.csproj --configuration Release --no-build --output ./artifacts
           dotnet pack src/Rkd.Scalar.FluentValidation/Rkd.Scalar.FluentValidation.csproj --configuration Release --no-build --output ./artifacts
 

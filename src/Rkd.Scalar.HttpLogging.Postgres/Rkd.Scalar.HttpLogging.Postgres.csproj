@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Rkd.Scalar</RootNamespace>
+
+    <PackageId>Rkd.Scalar.HttpLogging.Postgres</PackageId>
+    <Version>2.9.0</Version>
+    <Authors>Rodrigo Kmiecik</Authors>
+    <Company>rkd.com.br</Company>
+    <Product>Rkd.Scalar</Product>
+    <Title>Rkd.Scalar HTTP logging for PostgreSQL</Title>
+
+    <Description>PostgreSQL sink for the HTTP logging of Rkd.Scalar (WithHttpLogging): writes the captured requests in batches with binary COPY from a background service, so the API is never slowed down or broken by the database. Optional table creation, jsonb headers and properties, maps only the columns your table has.</Description>
+
+    <PackageTags>rkd-scalar;http-logging;postgres;postgresql;npgsql;aspnetcore;audit;observability;fire-and-forget</PackageTags>
+    <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
+
+    <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- First release: add EnablePackageValidation and PackageValidationBaselineVersion once 2.9.0 is published. -->
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Rkd.Scalar\Rkd.Scalar.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Rkd.Scalar\Media\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rkd.Scalar.Tests" />
+  </ItemGroup>
+
+</Project>
