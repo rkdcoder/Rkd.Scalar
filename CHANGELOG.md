@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.9.0
+
+### Added
+
+- New package **Rkd.Scalar.HttpLogging.Postgres**: `WriteHttpLogsToPostgres(...)` writes the HTTP logs to PostgreSQL in
+  batches with binary `COPY` (Npgsql), from the background writer. Optional table creation
+  (`PostgresHttpLogTable.CreateScript(...)`), `snake_case` columns with `jsonb` headers and properties, only the
+  columns the table has are written. Configurable from the `HttpLogging:Postgres` section.
+
 ## 2.8.1
 
 ### Changed

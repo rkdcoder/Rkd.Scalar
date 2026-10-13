@@ -8,7 +8,7 @@ namespace Rkd.Scalar
     /// <remarks>
     /// Sinks are singletons (use <c>IServiceScopeFactory</c> for scoped dependencies such as a <c>DbContext</c>).
     /// Exceptions are logged and the batch is discarded; entries must not be kept after the call returns.
-    /// Ready-made sinks: <c>Rkd.Scalar.HttpLogging.SqlServer</c>.
+    /// Ready-made sinks: <c>Rkd.Scalar.HttpLogging.SqlServer</c> and <c>Rkd.Scalar.HttpLogging.Postgres</c>.
     /// </remarks>
     /// <example>
     /// <code>

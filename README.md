@@ -27,7 +27,7 @@ It combines documentation, authentication helpers and security protections into 
   error responses documented in Scalar, safe defaults (no internals leaked in production) and a client package,
   [Rkd.Problems](https://github.com/rkdcoder/Rkd.Problems), that reads them from any `HttpClient`
 - **HTTP logging to any destination** — every request (status, duration, user, bodies, error `code`, exception)
-  queued in memory and written in batches by a background service; SQL Server with `Rkd.Scalar.HttpLogging.SqlServer`
+  queued in memory and written in batches by a background service; SQL Server with `Rkd.Scalar.HttpLogging.SqlServer`, PostgreSQL with `Rkd.Scalar.HttpLogging.Postgres`
   or your own `IHttpLogSink`, credentials redacted, the API is never slowed down
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
@@ -608,7 +608,7 @@ Every request can be logged to a database — or anywhere else — without slowi
 
 ```
 request ──► capture (outermost middleware) ──► bounded in-memory queue ──► background writer ──► sinks (batches)
-             never waits, never throws           full? entry dropped         SQL Server, your own IHttpLogSink…
+             never waits, never throws           full? entry dropped         SQL Server, PostgreSQL, your own IHttpLogSink…
 ```
 
 ```csharp
@@ -617,6 +617,9 @@ builder.AddRkdScalar()
     .WithHttpLogging(o => o.ExcludedPaths.Add("/health"))
     .WriteHttpLogsToSqlServer(builder.Configuration.GetConnectionString("Logs")!, "logs.HttpRequests", createTable: true);
 ```
+
+PostgreSQL works the same way — `dotnet add package Rkd.Scalar.HttpLogging.Postgres` and
+`.WriteHttpLogsToPostgres(connectionString, "logs.http_requests", createTable: true)`.
 
 Or entirely from configuration — `builder.AddRkdScalar().WriteHttpLogsToSqlServer();`:
 
@@ -633,6 +636,8 @@ Or entirely from configuration — `builder.AddRkdScalar().WriteHttpLogsToSqlSer
 }
 ```
 
+(for PostgreSQL the section is `HttpLogging:Postgres`, with the same three keys.)
+
 ## What each entry has
 
 `TraceId` (the same `traceId` of the problem details responses), `StartedAt` (UTC), `Duration`, `Method`, `Path`,
@@ -648,7 +653,7 @@ problem `code`, e.g. `CUSTOMER_NOT_FOUND`), `Exception` (unhandled 5xx only), `U
   (32 KB). Streaming responses (server-sent events, downloads) keep streaming; binary and multipart bodies are not
   captured (only their size).
 - **Batches**: sinks receive up to `BatchSize` (100) entries per call — the SQL Server sink writes each batch with
-  one `SqlBulkCopy`.
+  one `SqlBulkCopy` and the PostgreSQL sink with a binary `COPY`.
 - **Shutdown**: queued entries are written when the application stops (`ShutdownTimeout`, 5 s).
 - **Redaction**: `Authorization` keeps only its scheme (`Bearer [REDACTED]`); `Cookie`, `X-API-Key` and the
   `WithApiKeyAuth` header are redacted, as the query parameters `access_token`, `token`, `api_key`, `password`…
@@ -717,6 +722,15 @@ at startup, so a missing destination is never silent.
 the table (indexed by `StartedAt` and `TraceId`) on the first write; without DDL permissions, run
 `SqlServerHttpLogTable.CreateScript("logs.HttpRequests")` once. Only the columns your table has are written, so you
 can drop the ones you don't want. Oversized values are cut to the column size, so one request never rejects a batch.
+
+## PostgreSQL
+
+`Rkd.Scalar.HttpLogging.Postgres` (Npgsql) writes each batch with one binary `COPY`. `CreateTable = true` creates the
+schema and the table (indexed by `started_at` and `trace_id`) on the first write; without DDL permissions, run
+`PostgresHttpLogTable.CreateScript("logs.http_requests")` once. Columns are `snake_case` (`trace_id`, `status_code`…),
+headers and `Properties` are `jsonb`. As in SQL Server, only the columns your table has (with a compatible type) are
+written, and texts are cut to the size of `varchar(n)` columns. Unquoted table names are lower-cased, as PostgreSQL
+does; quote a name to keep its case.
 
 ---
 
@@ -1297,6 +1311,7 @@ The section also accepts `{ "Username": "...", "Password": "..." }`. Protection 
 | `WithHttpLogging(configure?)`                                       | HTTP request logging (queue + background writer)               |
 | `WithHttpLogSink<TSink>()` / `WithHttpLogSink(factory)`             | Destination of the HTTP logs                                   |
 | `WriteHttpLogsToSqlServer(...)`                                     | SQL Server destination (`Rkd.Scalar.HttpLogging.SqlServer`)    |
+| `WriteHttpLogsToPostgres(...)`                                      | PostgreSQL destination (`Rkd.Scalar.HttpLogging.Postgres`)     |
 | `WithLowercaseRouting()`                                            | Lowercase URLs and query strings                               |
 
 `IHttpClientBuilder.AddRkdJwtToken(identity)` authenticates outgoing calls with Rkd.Scalar tokens.
