@@ -7,7 +7,7 @@
     <RootNamespace>Rkd.Scalar</RootNamespace>
 
     <PackageId>Rkd.Scalar.HttpLogging.SqlServer</PackageId>
-    <Version>2.5.0</Version>
+    <Version>2.9.1</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
@@ -42,6 +42,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
+    <!-- Overrides the 9.0.18 brought by Microsoft.Data.SqlClient 7.1.1, vulnerable to CVE-2026-84008 and CVE-2026-70162 (denial of service). -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.9.1
+
+### Security
+
+- **Rkd.Scalar.HttpLogging.SqlServer** references System.Security.Cryptography.Pkcs 10.0.13: Microsoft.Data.SqlClient
+  7.1.1 (still the latest) brings 9.0.18, affected by CVE-2026-84008 (high,
+  [GHSA-846f-f764-76mx](https://github.com/advisories/GHSA-846f-f764-76mx)) and CVE-2026-70162 (moderate,
+  [GHSA-2fmv-rv2c-59x7](https://github.com/advisories/GHSA-2fmv-rv2c-59x7)), both .NET denial of service.
+
+### Changed
+
+- All packages published as 2.9.1 (Rkd.Scalar, Rkd.Scalar.FluentValidation, Rkd.Scalar.HttpLogging.SqlServer and
+  Rkd.Scalar.HttpLogging.Postgres), so the updated dependencies reach nuget.org. No public API change.
+- Dependencies updated: ASP.NET Core / Extensions 10.0.13, Scalar.AspNetCore 2.18.2, Microsoft.OpenApi 2.13.0
+  (3.x is still incompatible with Microsoft.AspNetCore.OpenApi 10.x), FluentValidation 12.2.0 and Npgsql 10.0.3.
+
 ## 2.9.0
 
 ### Added

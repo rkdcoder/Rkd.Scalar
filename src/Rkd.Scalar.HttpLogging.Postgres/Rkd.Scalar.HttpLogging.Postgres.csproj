@@ -7,7 +7,7 @@
     <RootNamespace>Rkd.Scalar</RootNamespace>
 
     <PackageId>Rkd.Scalar.HttpLogging.Postgres</PackageId>
-    <Version>2.9.0</Version>
+    <Version>2.9.1</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
@@ -32,14 +32,16 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- First release: add EnablePackageValidation and PackageValidationBaselineVersion once 2.9.0 is published. -->
+    <!-- Fails the pack if the public API breaks compared with the last published version. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>2.9.0</PackageValidationBaselineVersion>
 
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="10.0.0" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
