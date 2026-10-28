@@ -17,7 +17,7 @@ namespace Rkd.Scalar
         /// <summary>Time spent until the response was produced.</summary>
         public TimeSpan Duration { get; set; }
 
-        /// <summary>Application name (<see cref="RkdHttpLoggingOptions.ApplicationName"/>).</summary>
+        /// <summary>Application name (<c>RkdHttpLoggingOptions.ApplicationName</c>).</summary>
         public string? ApplicationName { get; set; }
 
         /// <summary>HTTP method.</summary>
@@ -35,7 +35,7 @@ namespace Rkd.Scalar
         /// <summary>Request path.</summary>
         public string Path { get; set; } = string.Empty;
 
-        /// <summary>Query string, with the values of <see cref="RkdHttpLoggingOptions.RedactedQueryParameters"/> redacted.</summary>
+        /// <summary>Query string, with the values of <c>RkdHttpLoggingOptions.RedactedQueryParameters</c> redacted.</summary>
         public string? QueryString { get; set; }
 
         /// <summary>Route template of the matched endpoint (e.g. <c>api/v{version}/orders/{id}</c>), useful to group requests.</summary>
@@ -86,7 +86,7 @@ namespace Rkd.Scalar
         /// <summary><c>Accept-Language</c> header.</summary>
         public string? Locale { get; set; }
 
-        /// <summary>Request headers, with the values of <see cref="RkdHttpLoggingOptions.RedactedHeaders"/> redacted.</summary>
+        /// <summary>Request headers, with the values of <c>RkdHttpLoggingOptions.RedactedHeaders</c> redacted.</summary>
         public IDictionary<string, string> RequestHeaders { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Request <c>Content-Type</c>.</summary>
@@ -96,12 +96,12 @@ namespace Rkd.Scalar
         public long? RequestContentLength { get; set; }
 
         /// <summary>
-        /// Request body read by the application (text content types only, up to <see cref="RkdHttpLoggingOptions.MaxBodyBytes"/>);
+        /// Request body read by the application (text content types only, up to <c>RkdHttpLoggingOptions.MaxBodyBytes</c>);
         /// <c>[REDACTED]</c> on sensitive paths.
         /// </summary>
         public string? RequestBody { get; set; }
 
-        /// <summary>Whether <see cref="RequestBody"/> was cut at <see cref="RkdHttpLoggingOptions.MaxBodyBytes"/>.</summary>
+        /// <summary>Whether <see cref="RequestBody"/> was cut at <c>RkdHttpLoggingOptions.MaxBodyBytes</c>.</summary>
         public bool RequestBodyTruncated { get; set; }
 
         /// <summary>Response <c>Content-Type</c>.</summary>
@@ -111,15 +111,15 @@ namespace Rkd.Scalar
         public long? ResponseSize { get; set; }
 
         /// <summary>
-        /// Response body (text content types only, up to <see cref="RkdHttpLoggingOptions.MaxBodyBytes"/>);
+        /// Response body (text content types only, up to <c>RkdHttpLoggingOptions.MaxBodyBytes</c>);
         /// <c>[REDACTED]</c> on sensitive paths.
         /// </summary>
         public string? ResponseBody { get; set; }
 
-        /// <summary>Whether <see cref="ResponseBody"/> was cut at <see cref="RkdHttpLoggingOptions.MaxBodyBytes"/>.</summary>
+        /// <summary>Whether <see cref="ResponseBody"/> was cut at <c>RkdHttpLoggingOptions.MaxBodyBytes</c>.</summary>
         public bool ResponseBodyTruncated { get; set; }
 
-        /// <summary>Custom values added by <see cref="RkdHttpLoggingOptions.Enrich"/> (tenant, correlation ids…).</summary>
+        /// <summary>Custom values added by <c>RkdHttpLoggingOptions.Enrich</c> (tenant, correlation ids…).</summary>
         public IDictionary<string, object?> Properties { get; set; } = new Dictionary<string, object?>(StringComparer.Ordinal);
     }
 }

@@ -215,41 +215,19 @@ namespace Rkd.Scalar.Security.Jwt
 
         private static AsymmetricSecurityKey ImportPem(string pem, string optionName)
         {
-            // Private keys: managed decoding first (works under IIS without a user profile), ImportFromPem otherwise.
-            switch (PemPrivateKeyReader.TryImport(pem))
-            {
-                case RSA managedRsa:
-                    return new RsaSecurityKey(managedRsa);
-                case ECDsa managedEcdsa:
-                    return new ECDsaSecurityKey(managedEcdsa);
-            }
-
-            var rsa = RSA.Create();
-
+            // Private keys: managed decoding first (works under IIS without a user profile), ImportFromPem otherwise,
+            // which also reads public keys. RkdPem (Rkd.Scalar.Abstractions) is the single implementation.
             try
             {
-                rsa.ImportFromPem(pem);
-                return new RsaSecurityKey(rsa);
-            }
-            catch (Exception ex) when (ex is ArgumentException or CryptographicException)
-            {
-                rsa.Dispose();
-            }
+                var key = RkdPem.ImportPrivateKey(pem);
 
-            var ecdsa = ECDsa.Create();
-
-            try
-            {
-                ecdsa.ImportFromPem(pem);
-                return new ECDsaSecurityKey(ecdsa);
+                return key is RSA rsa ? new RsaSecurityKey(rsa) : new ECDsaSecurityKey((ECDsa)key);
             }
-            catch (Exception ex) when (ex is ArgumentException or CryptographicException)
+            catch (CryptographicException ex)
             {
-                ecdsa.Dispose();
+                throw new InvalidOperationException(
+                    $"JwtOptions.{optionName} does not contain a valid PEM encoded RSA or ECDSA key.", ex);
             }
-
-            throw new InvalidOperationException(
-                $"JwtOptions.{optionName} does not contain a valid PEM encoded RSA or ECDSA key.");
         }
     }
 }

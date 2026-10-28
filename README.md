@@ -51,6 +51,37 @@ namespace: `using Rkd.Scalar;`.
 dotnet add package Rkd.Scalar
 ```
 
+| Package | Contents | Install in |
+| --- | --- | --- |
+| `Rkd.Scalar` | Everything: builder, documentation, authentication, errors, HTTP logging | The API project |
+| `Rkd.Scalar.Abstractions` | Contracts you implement: validators, JWT signer / key resolver / token service, HTTP log sinks | Infrastructure, Application |
+| `Rkd.Scalar.Errors` | `RkdError`, `ProblemException`, `IProblemLogDetails` | Domain, Application, Infrastructure |
+| `Rkd.Scalar.FluentValidation` | `WithFluentValidation()` | The API project |
+| `Rkd.Scalar.HttpLogging.SqlServer` / `.Postgres` | Ready-made HTTP log sinks | The API project |
+
+## Layered solutions (Clean Architecture / DDD)
+
+The other layers never need the whole Rkd.Scalar (ASP.NET Core authentication, Scalar, OpenAPI, API versioning):
+they reference only the contracts they implement or the errors they throw, and the API project — the composition
+root — registers them.
+
+```
+MyApp.Domain          → Rkd.Scalar.Errors           (if it throws RkdError)
+MyApp.Application     → Rkd.Scalar.Errors           RkdError.NotFound("ORDER_NOT_FOUND", …)
+MyApp.Infrastructure  → Rkd.Scalar.Abstractions     LoginValidator : ICredentialValidator<LoginRequest>,
+                                                    DbKeyResolver : IJwtSigningKeyResolver, KmsSigner : IJwtSigner,
+                                                    QueueHttpLogSink : IHttpLogSink
+MyApp.Api             → Rkd.Scalar                  AddRkdScalar().WithBearerAuth<LoginRequest, LoginValidator>()
+```
+
+- The types and the namespace (`Rkd.Scalar`) are the same in every package, and Rkd.Scalar depends on both
+  packages: code, `using`s and registrations do not change.
+- `Rkd.Scalar.Abstractions` does not reference ASP.NET Core; its only dependency is `Microsoft.IdentityModel.Tokens`
+  (`SecurityKey`). `Rkd.Scalar.Errors` depends on Rkd.Problems and the ASP.NET Core shared framework
+  (`ProblemException.ToProblemDetails()`), no other package.
+- Upgrading from 2.9 or earlier: nothing to change. The moved types are forwarded from `Rkd.Scalar.dll`, so
+  libraries compiled against an older version keep working.
+
 ---
 
 # 30‑Second Setup
@@ -316,7 +347,8 @@ Messages change and get translated; clients should branch on a **stable code**. 
 | Validation (`[ApiController]`, `AddValidation()`, `ValidationProblem`, `RkdError.Validation`) | `VALIDATION_ERROR` |
 | Anything else                             | the status reason phrase: `NOT_FOUND`, `UNAUTHORIZED`, `FORBIDDEN`, `TOO_MANY_REQUESTS`, `INTERNAL_SERVER_ERROR`… |
 
-Throw from anywhere (services, handlers, domain) with `RkdError`:
+Throw from anywhere (services, handlers, domain) with `RkdError` — projects other than the API only need
+`Rkd.Scalar.Errors` ([Layered solutions](#layered-solutions-clean-architecture--ddd)):
 
 ```csharp
 throw RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", "Já existe um cliente com este CPF.");
@@ -714,7 +746,8 @@ builder.AddRkdScalar().WithHttpLogSink<ElasticHttpLogSink>();   // several sinks
 ```
 
 Sinks are singletons called by the background writer — never by a request. Without any sink the application fails
-at startup, so a missing destination is never silent.
+at startup, so a missing destination is never silent. A sink implemented in another project only needs
+`Rkd.Scalar.Abstractions`.
 
 ## SQL Server
 
@@ -879,6 +912,9 @@ public sealed class LoginValidator(IUserRepository users, IPasswordHasher hasher
 
 Credential models provided by the package: `BasicAuthCredentials(Username, Password)` and
 `ApiKeyCredentials(Key)`. For JWT login you use your own model (`LoginRequest` above).
+
+Validators that live outside the API project (in Infrastructure, next to the repositories) only need
+`Rkd.Scalar.Abstractions` — see [Layered solutions](#layered-solutions-clean-architecture--ddd).
 
 ---
 
@@ -1107,6 +1143,8 @@ builder.AddRkdScalar()
   sign on behalf of another one. `Jwt:Issuer` may be omitted only when the resolver is the only key source; then
   every resolved key must have an issuer.
 - Keys configured in `JwtOptions` keep working; a failing resolver rejects the token (401) and logs the error.
+- The resolver can live in Infrastructure with only `Rkd.Scalar.Abstractions`; unit test it with
+  `new JwtSigningKeyContext(kid, issuer, algorithm)`.
 
 ```csharp
 .WithJwtSigningKeyResolver<ServiceKeyResolver>(o =>

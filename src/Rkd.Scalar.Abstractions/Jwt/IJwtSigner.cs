@@ -7,8 +7,8 @@ namespace Rkd.Scalar
     /// <remarks>
     /// Register it with <c>WithJwtSigner&lt;TSigner&gt;()</c>. When registered, the token service
     /// builds the token header and payload and delegates only the signature to this service.
-    /// To validate the tokens, configure the matching public key (<see cref="JwtOptions.PublicKeyPem"/>,
-    /// <see cref="JwtOptions.PublicKeyPath"/>, <see cref="JwtOptions.ValidationKeys"/>) or an <see cref="JwtOptions.Authority"/>.
+    /// To validate the tokens, configure the matching public key (<c>JwtOptions.PublicKeyPem</c>,
+    /// <c>JwtOptions.PublicKeyPath</c>, <c>JwtOptions.ValidationKeys</c>) or an <c>JwtOptions.Authority</c>.
     /// </remarks>
     public interface IJwtSigner
     {
