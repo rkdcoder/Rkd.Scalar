@@ -4,6 +4,30 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.10.0
+
+### Added
+
+- New package **Rkd.Scalar.Abstractions**: the contracts implemented outside the API project, without ASP.NET Core —
+  `ICredentialValidator<TCredentials>`, `CredentialValidationResult`, `BasicAuthCredentials`, `ApiKeyCredentials`,
+  `RkdScalarAuthenticationSchemes`, `IJwtTokenService`, `JwtToken`, `JwtLoginResponse`, `IJwtSigner`,
+  `IJwtSigningKeyResolver`, `JwtSigningKey`, `JwtSigningKeyContext`, `RkdPem`, `IHttpLogSink` and `HttpLogEntry`.
+  Only dependency: `Microsoft.IdentityModel.Tokens`. An Infrastructure project implements a validator, a signer, a key
+  resolver or an HTTP log sink without referencing the whole Rkd.Scalar.
+- New package **Rkd.Scalar.Errors**: `RkdError`, `ProblemException` and `IProblemLogDetails`, to throw problems from
+  the Domain or Application layers. Depends on Rkd.Problems and the ASP.NET Core shared framework only.
+- README: "Layered solutions (Clean Architecture / DDD)" — which package goes in each project.
+- `JwtSigningKeyContext` has a public constructor, to unit test an `IJwtSigningKeyResolver`.
+
+### Changed
+
+- Rkd.Scalar depends on both packages, and the types above moved there with the same name and namespace
+  (`Rkd.Scalar`). They are forwarded from `Rkd.Scalar.dll`: no code change, and libraries compiled against 2.9 or
+  earlier keep working (checked by package validation against 2.9.1).
+- `JwtOptions.PrivateKeyPem` / `PublicKeyPem` are imported by `RkdPem`, the same implementation as before; the
+  "does not contain a valid PEM" error now carries the import failure as inner exception.
+- All packages published as 2.10.0.
+
 ## 2.9.1
 
 ### Security

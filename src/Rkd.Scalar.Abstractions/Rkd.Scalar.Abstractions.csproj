@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Rkd.Scalar</RootNamespace>
+
+    <PackageId>Rkd.Scalar.Abstractions</PackageId>
+    <Version>2.10.0</Version>
+    <Authors>Rodrigo Kmiecik</Authors>
+    <Company>rkd.com.br</Company>
+    <Product>Rkd.Scalar</Product>
+    <Title>Rkd.Scalar abstractions</Title>
+
+    <Description>Contracts of Rkd.Scalar for the layers that implement them without ASP.NET Core (Infrastructure, Application): ICredentialValidator, CredentialValidationResult, IJwtTokenService, IJwtSigner, IJwtSigningKeyResolver, RkdPem, IHttpLogSink and HttpLogEntry. The same types used by Rkd.Scalar, so the API project registers what the other layers implement.</Description>
+
+    <PackageTags>rkd-scalar;abstractions;contracts;authentication;jwt;api-key;basic-auth;http-logging;clean-architecture;ddd</PackageTags>
+    <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
+
+    <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- First release: no baseline yet. Set PackageValidationBaselineVersion to 2.10.0 after it is published. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SecurityKey of JwtSigningKey. No ASP.NET Core: the package works in any class library. -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.19.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Rkd.Scalar\Media\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rkd.Scalar.Tests" />
+  </ItemGroup>
+
+</Project>

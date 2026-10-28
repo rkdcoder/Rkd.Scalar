@@ -40,7 +40,7 @@ namespace Rkd.Scalar
         /// <param name="key">Public key (RSA, ECDSA, X509) or shared secret. Its <see cref="SecurityKey.KeyId"/> should match the token <c>kid</c>.</param>
         /// <param name="issuer">
         /// When set, only tokens whose <c>iss</c> is exactly this value are accepted with this key — a service cannot
-        /// sign tokens on behalf of another one. Required when <see cref="JwtOptions.Issuer"/> is not configured.
+        /// sign tokens on behalf of another one. Required when <c>JwtOptions.Issuer</c> is not configured.
         /// </param>
         public JwtSigningKey(SecurityKey key, string? issuer = null)
         {
@@ -62,7 +62,13 @@ namespace Rkd.Scalar
     /// </summary>
     public sealed class JwtSigningKeyContext
     {
-        internal JwtSigningKeyContext(string? keyId, string? issuer, string? algorithm)
+        /// <summary>
+        /// Creates the context. Rkd.Scalar builds it from each incoming token; create one yourself to unit test a resolver.
+        /// </summary>
+        /// <param name="keyId">The <c>kid</c> header.</param>
+        /// <param name="issuer">The <c>iss</c> claim.</param>
+        /// <param name="algorithm">The <c>alg</c> header.</param>
+        public JwtSigningKeyContext(string? keyId, string? issuer, string? algorithm)
         {
             KeyId = keyId;
             Issuer = issuer;
@@ -77,21 +83,5 @@ namespace Rkd.Scalar
 
         /// <summary>The <c>alg</c> header (e.g. <c>ES256</c>).</summary>
         public string? Algorithm { get; }
-    }
-
-    /// <summary>
-    /// Cache settings of <see cref="IJwtSigningKeyResolver"/>.
-    /// </summary>
-    public sealed class JwtSigningKeyResolverOptions
-    {
-        /// <summary>How long resolved keys are reused before the resolver is called again. Defaults to 10 minutes.</summary>
-        public TimeSpan KeyCacheDuration { get; set; } = TimeSpan.FromMinutes(10);
-
-        /// <summary>
-        /// How long a <c>kid</c> the resolver did not find stays rejected without calling it again, protecting the
-        /// key store from tokens with random <c>kid</c> values. Defaults to 30 seconds; <see cref="TimeSpan.Zero"/>
-        /// looks it up on every request.
-        /// </summary>
-        public TimeSpan UnknownKeyCacheDuration { get; set; } = TimeSpan.FromSeconds(30);
     }
 }

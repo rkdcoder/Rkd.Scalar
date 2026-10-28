@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Rkd.Scalar</RootNamespace>
+
+    <PackageId>Rkd.Scalar.Errors</PackageId>
+    <Version>2.10.0</Version>
+    <Authors>Rodrigo Kmiecik</Authors>
+    <Company>rkd.com.br</Company>
+    <Product>Rkd.Scalar</Product>
+    <Title>Rkd.Scalar errors</Title>
+
+    <Description>Errors of Rkd.Scalar for any layer (Domain, Application, Infrastructure): RkdError, ProblemException and IProblemLogDetails, converted into RFC 9457 problem details by WithProblemDetails() in the API project. Depends only on Rkd.Problems and the ASP.NET Core shared framework (no other package).</Description>
+
+    <PackageTags>rkd-scalar;errors;problem-details;rfc9457;error-handling;clean-architecture;ddd</PackageTags>
+    <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
+
+    <RepositoryUrl>https://github.com/rkdcoder/Rkd.Scalar</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/rkdcoder/Rkd.Scalar</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- First release: no baseline yet. Set PackageValidationBaselineVersion to 2.10.0 after it is published. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      ProblemException.ToProblemDetails() returns Microsoft.AspNetCore.Mvc.ProblemDetails, part of the ASP.NET Core
+      shared framework (no package is downloaded). Kept on the type so that 2.x stays binary compatible.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Rkd.Problems" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Rkd.Scalar\Media\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

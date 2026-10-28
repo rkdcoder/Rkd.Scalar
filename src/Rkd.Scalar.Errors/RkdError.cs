@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using Rkd.Scalar.Errors;
 
 namespace Rkd.Scalar
 {
@@ -18,7 +17,7 @@ namespace Rkd.Scalar
     /// // 409 { "code": "CUSTOMER_ALREADY_EXISTS", "title": "Conflict", "detail": "...", "traceId": "..." }
     /// </code>
     /// </example>
-    /// <remarks>To return the problem instead of throwing, use <see cref="RkdResults"/>.</remarks>
+    /// <remarks>To return the problem instead of throwing, use <c>RkdResults</c>.</remarks>
     public static class RkdError
     {
         /// <summary>Title of validation problems, the same used by ASP.NET Core.</summary>
@@ -72,13 +71,13 @@ namespace Rkd.Scalar
         public static ProblemException Validation(
             IDictionary<string, string[]> errors,
             string? detail = null,
-            string code = ProblemCodes.Validation,
+            string code = Rkd.Problems.ProblemCodes.Validation,
             int statusCode = StatusCodes.Status400BadRequest)
         {
             ArgumentNullException.ThrowIfNull(errors);
 
             var problem = Create(statusCode, code, detail, ValidationTitle);
-            problem.Extensions[Errors.ProblemCodes.ErrorsName] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
+            problem.Extensions[Rkd.Problems.ProblemMembers.Errors] = new Dictionary<string, string[]>(errors, StringComparer.Ordinal);
 
             return problem;
         }

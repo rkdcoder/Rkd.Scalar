@@ -7,7 +7,7 @@
     <RootNamespace>Rkd.Scalar</RootNamespace>
 
     <PackageId>Rkd.Scalar.HttpLogging.Postgres</PackageId>
-    <Version>2.9.1</Version>
+    <Version>2.10.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
@@ -34,7 +34,7 @@
 
     <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>2.9.0</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>2.9.1</PackageValidationBaselineVersion>
 
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

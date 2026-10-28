@@ -27,7 +27,7 @@ namespace Rkd.Scalar
     /// </example>
     public interface IHttpLogSink
     {
-        /// <summary>Persists a batch of entries (1 to <see cref="RkdHttpLoggingOptions.BatchSize"/> items).</summary>
+        /// <summary>Persists a batch of entries (1 to <c>RkdHttpLoggingOptions.BatchSize</c> items).</summary>
         /// <param name="entries">Entries, in the order the requests finished.</param>
         /// <param name="cancellationToken">Cancelled when the application stops and the shutdown timeout is over.</param>
         Task WriteAsync(IReadOnlyList<HttpLogEntry> entries, CancellationToken cancellationToken);

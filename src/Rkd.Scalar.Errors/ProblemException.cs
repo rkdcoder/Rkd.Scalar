@@ -59,10 +59,28 @@ namespace Rkd.Scalar
         public string? Code
         {
             get => _code;
-            init => _code = value is null ? null : Errors.ProblemCodes.Validate(value);
+            init => _code = value is null ? null : ValidateCode(value);
         }
 
         private readonly string? _code;
+
+        // Letters, digits, '_', '-' and '.' only, so the code is safe to switch on. Same rule as the codes
+        // configured in Rkd.Scalar (ProblemCodes.Validate); a test keeps both in sync.
+        private static string ValidateCode(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                throw new ArgumentException("The error code cannot be empty.", nameof(code));
+
+            foreach (var character in code)
+            {
+                if (!char.IsLetterOrDigit(character) && character is not ('_' or '-' or '.'))
+                    throw new ArgumentException(
+                        $"'{code}' is not a valid error code. Use letters, digits, '_', '-' or '.', e.g. \"CUSTOMER_NOT_FOUND\".",
+                        nameof(code));
+            }
+
+            return code;
+        }
 
         /// <summary>
         /// Technical details written to the log and <b>never</b> sent to the client (ids, upstream errors…).
@@ -99,7 +117,7 @@ namespace Rkd.Scalar
                 problem.Extensions[key] = value;
 
             if (Code is not null)
-                problem.Extensions[Errors.ProblemCodes.ExtensionName] = Code;
+                problem.Extensions[Rkd.Problems.ProblemMembers.Code] = Code;
 
             return problem;
         }
