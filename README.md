@@ -21,14 +21,16 @@ It combines documentation, authentication helpers and security protections into 
 - **OpenAPI generation** with **XML comments applied automatically** (every version, no extra code)
 - **JWT Bearer authentication** — HMAC secret, **RSA / ECDSA keys**, **OIDC authority (JWKS)** or **async / KMS signing**,
   with **standard claim names** (`sub`, `name`, `role`…) and `iat` / `jti`, **keys resolved at runtime by `kid`**
-  (database / key registry), `JwtBearerOptions` hooks and **service tokens for outgoing `HttpClient` calls**
+  (database / key registry), `JwtBearerOptions` hooks, **a validity per token** and **service tokens for outgoing
+  `HttpClient` calls**
 - **Standardized errors (RFC 9457)** — every exception and error response becomes `application/problem+json`,
   with exception mapping, stable error **codes** (`RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", …)`, `RkdResults`),
   error responses documented in Scalar, safe defaults (no internals leaked in production) and a client package,
   [Rkd.Problems](https://github.com/rkdcoder/Rkd.Problems), that reads them from any `HttpClient`
 - **HTTP logging to any destination** — every request (status, duration, user, bodies, error `code`, exception)
   queued in memory and written in batches by a background service; SQL Server with `Rkd.Scalar.HttpLogging.SqlServer`, PostgreSQL with `Rkd.Scalar.HttpLogging.Postgres`
-  or your own `IHttpLogSink`, credentials redacted, the API is never slowed down
+  or your own `IHttpLogSink`, credentials redacted, bodies of every request or only of the failed ones, the API is
+  never slowed down
 - **API Key** and **Basic** authentication
 - **Configuration-based validators** — protect the UI, Basic and API Key with **zero validator code**
 - **Scalar UI protection**
@@ -707,6 +709,59 @@ app.MapPost("/systems/{id}/keys", CreateKey).WithSensitiveHttpLog();   // minima
 The endpoint is known only after routing, so the captured bodies are discarded before the entry is queued: they
 never reach a sink.
 
+## Bodies only of failed requests
+
+Every entry keeps its bodies by default. To keep the log light, drop them from the requests that succeeded: the entry
+is still written (status, duration, user, sizes…) and the failed requests keep their bodies, so problems can still be
+diagnosed:
+
+```json
+{
+  "HttpLogging": {
+    "LogRequestBodyOnSuccess": false,
+    "LogResponseBodyOnSuccess": false
+  }
+}
+```
+
+| `LogRequestBodyOnSuccess` / `LogResponseBodyOnSuccess` | Request that succeeded | Request that failed |
+| ------------------------------------------------------ | ---------------------- | ------------------- |
+| `null` (the default) or `true`                         | Body in the entry      | Body in the entry   |
+| `false`                                                | No body                | Body in the entry   |
+
+Each body is chosen apart. `CaptureRequestBody` / `CaptureResponseBody` = `false` still means never, not even on
+failures, and sensitive routes never store a body: `[REDACTED]` when it would be kept, nothing otherwise. To not write
+the entries of requests that succeeded at all, use `Filter`.
+
+A request failed when its status code is 400 or above, or it had an exception. `KeepBodiesWhen` replaces that rule; it
+receives the entry, still without the bodies:
+
+```csharp
+.WithHttpLogging(o =>
+{
+    o.LogRequestBodyOnSuccess = false;
+    o.LogResponseBodyOnSuccess = false;
+    o.KeepBodiesWhen = (context, entry) => entry.StatusCode >= 500 || entry.Duration > TimeSpan.FromSeconds(5);
+})
+```
+
+An endpoint can choose differently from the options, in both directions:
+
+```csharp
+[HttpPost("chat"), HttpLogBodies(false)]                       // controller or action: neither body, unless it fails
+[HttpGet("{id}"), HttpLogBodies(ResponseOnSuccess = false)]    // only one of them; the other follows the options
+[HttpPost("audit"), HttpLogBodies(true)]                       // always, even with the options turned off
+
+app.MapPost("/chat", Chat).WithHttpLogBodies(onSuccess: false);   // minimal API (or a MapGroup)
+app.MapGet("/report", Report).WithHttpLogBodies(requestOnSuccess: null, responseOnSuccess: false);
+```
+
+- The outcome is known only after the response, so the capture still runs, up to `MaxBodyBytes` per body, and is
+  discarded at the end. Only `CaptureRequestBody` / `CaptureResponseBody` = `false` avoid it.
+- The request body is what the application read: a failure before that (a 401 from authentication, a 404) has only the
+  response body.
+- A JSON `null` in the on/off options of the `HttpLogging` section keeps their default, like leaving them out.
+
 ## Options
 
 | Option                    | Default     | Description                                                            |
@@ -715,6 +770,8 @@ never reach a sink.
 | `ExcludedPaths`           | —           | Not logged (by segment: `/health` excludes `/health/ready`)             |
 | `SensitivePaths`          | login route | Bodies replaced by `[REDACTED]`                                        |
 | `CaptureRequestBody` / `CaptureResponseBody` / `CaptureRequestHeaders` | `true` | What is captured      |
+| `LogRequestBodyOnSuccess` / `LogResponseBodyOnSuccess` | `null` (yes) | `false`: only failed requests keep the body |
+| `KeepBodiesWhen`          | status ≥ 400 or exception | `(context, entry) => bool`: which requests keep the bodies dropped by the two above |
 | `MaxBodyBytes`            | `32768`     | Bytes kept of each body (`RequestBodyTruncated` / `ResponseBodyTruncated`) |
 | `RedactedHeaders` / `RedactedQueryParameters` | see above | Values replaced by `[REDACTED]`                        |
 | `UserNameClaimTypes`      | `ClaimTypes.Name`, `name`, `preferred_username`, `unique_name`, email | First claim found becomes `UserName` |
@@ -1181,7 +1238,8 @@ builder.Services.AddHttpClient<DataApiClient>(c => c.BaseAddress = new Uri(dataA
 
 The other API must accept the user's tokens (same issuer and its audience in `AdditionalAudiences`).
 Requests that already have an `Authorization` header are sent unchanged. `RefreshBeforeExpiration` (default 1 min,
-never more than half the lifetime) controls the renewal.
+never more than half the lifetime) controls the renewal, and `Lifetime` the validity of these tokens (default:
+`ExpirationInMinutes`): `o => o.Lifetime = TimeSpan.FromMinutes(5)`.
 
 ## Your own login endpoint (recommended for production)
 
@@ -1216,6 +1274,29 @@ public sealed class AuthController(
 Production checklist: load secrets and private keys from a secret store, prefer asymmetric keys when
 several services validate the tokens, hash passwords, apply your own rate limiting policy and log
 failed attempts.
+
+## Validity per token
+
+Tokens live for `ExpirationInMinutes`. When the validity depends on the case (a temporary access, a short-lived link, a
+longer session for some users), pass it when issuing:
+
+```csharp
+// Until a given instant
+var token = await tokens.CreateTokenAsync(identity, access.ValidUntil, cancellationToken: cancellationToken);
+
+// For a given time, with extra claims
+var token = await tokens.CreateTokenAsync(identity, TimeSpan.FromMinutes(5), [new Claim("scope", "report.read")], cancellationToken);
+```
+
+- Works with every way of signing (HMAC, RSA / ECDSA, `IJwtSigner`). Calls without a validity are not affected.
+- `exp` has whole seconds and is rounded down, so the token never outlives what was asked; `JwtToken.ExpiresAt` and
+  `JwtLoginResponse.FromToken` report that value. Claims named `exp` are ignored, as always.
+- An instant that is not after the moment of issue, or a lifetime shorter than one second, throws
+  `ArgumentOutOfRangeException`. There is no upper limit: that rule is yours.
+- Validators still apply `ClockSkewInSeconds` (default 30): a token is accepted that long after its `exp`.
+- A custom service (`WithJwtTokenService<T>()`) written for an earlier version keeps compiling and working, but these
+  calls throw `NotSupportedException` until it overrides the method that receives the instant. It never issues a token
+  with a validity other than the one asked for. Overriding that method also enables the one with `TimeSpan`.
 
 ## Built-in login endpoint (development / testing)
 

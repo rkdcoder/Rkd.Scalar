@@ -74,7 +74,11 @@ namespace Rkd.Scalar.Security.Jwt
                 "AddRkdJwtToken requires an IJwtTokenService: configure a signing key with WithBearerAuth (Secret, " +
                 "PrivateKeyPath, SigningKey or WithJwtSigner) or register your own with WithJwtTokenService<T>().");
 
-            return tokens.CreateTokenAsync(_identityFactory(_services), _options.AdditionalClaims, cancellationToken);
+            var identity = _identityFactory(_services);
+
+            return _options.Lifetime is { } lifetime
+                ? tokens.CreateTokenAsync(identity, lifetime, _options.AdditionalClaims, cancellationToken)
+                : tokens.CreateTokenAsync(identity, _options.AdditionalClaims, cancellationToken);
         }
     }
 

@@ -31,18 +31,43 @@ namespace Rkd.Scalar.Security.Jwt
             _time = time ?? TimeProvider.System;
         }
 
-        public async Task<JwtToken> CreateTokenAsync(
+        public Task<JwtToken> CreateTokenAsync(
             ClaimsIdentity identity,
             IEnumerable<Claim>? additionalClaims = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) =>
+            CreateAsync(identity, additionalClaims, issuedAt => issuedAt.Add(_options.Expiration), cancellationToken);
+
+        public Task<JwtToken> CreateTokenAsync(
+            ClaimsIdentity identity,
+            DateTimeOffset expiresAt,
+            IEnumerable<Claim>? additionalClaims = null,
+            CancellationToken cancellationToken = default) =>
+            CreateAsync(identity, additionalClaims, _ => expiresAt, cancellationToken);
+
+        public Task<JwtToken> CreateTokenAsync(
+            ClaimsIdentity identity,
+            TimeSpan lifetime,
+            IEnumerable<Claim>? additionalClaims = null,
+            CancellationToken cancellationToken = default) =>
+            CreateAsync(identity, additionalClaims, issuedAt => issuedAt.Add(lifetime), cancellationToken);
+
+        private async Task<JwtToken> CreateAsync(
+            ClaimsIdentity identity,
+            IEnumerable<Claim>? additionalClaims,
+            Func<DateTimeOffset, DateTimeOffset> expiration,
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(identity);
 
             var claims = identity.Claims.Concat(additionalClaims ?? []).ToList();
 
-            // Whole seconds, like the numeric dates written to the token.
+            // Whole seconds, like the numeric dates written to the token: rounded down, it never outlives what was asked.
             var issuedAt = DateTimeOffset.FromUnixTimeSeconds(_time.GetUtcNow().ToUnixTimeSeconds());
-            var expiresAt = issuedAt.Add(_options.Expiration);
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiration(issuedAt).ToUnixTimeSeconds());
+
+            if (expiresAt <= issuedAt)
+                throw new ArgumentOutOfRangeException(nameof(expiration), expiresAt, $"A JWT must expire after it is issued ({issuedAt:O}), in whole seconds.");
+
             var tokenId = claims.FirstOrDefault(c => c.Type == "jti")?.Value ?? Guid.NewGuid().ToString("N");
 
             var payload = BuildPayload(claims, tokenId, issuedAt, expiresAt);

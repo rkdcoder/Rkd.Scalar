@@ -13,6 +13,12 @@ namespace Rkd.Scalar
         public TimeSpan RefreshBeforeExpiration { get; set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>
+        /// How long the service tokens of this client are valid. <see langword="null"/> (the default) uses
+        /// <c>JwtOptions.ExpirationInMinutes</c>. A custom <see cref="IJwtTokenService"/> must support a validity per token.
+        /// </summary>
+        public TimeSpan? Lifetime { get; set; }
+
+        /// <summary>
         /// Calls made while handling a request forward that request's <c>Authorization: Bearer</c> header (the user's
         /// own token), so the other API sees the logged user. A service token is issued only when there is no current
         /// request or it has no Bearer token (background jobs, anonymous or Basic/API Key requests).
