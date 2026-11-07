@@ -35,11 +35,55 @@ namespace Rkd.Scalar
         /// <summary>Maximum bytes kept of each request and response body. Defaults to 32 KB.</summary>
         public int MaxBodyBytes { get; set; } = 32 * 1024;
 
-        /// <summary>Captures request bodies (text content types only). Defaults to <see langword="true"/>.</summary>
+        /// <summary>
+        /// Captures request bodies (text content types only). Defaults to <see langword="true"/>. When
+        /// <see langword="false"/>, the body is never in the log, not even of failed requests: see
+        /// <see cref="LogRequestBodyOnSuccess"/> to keep it only for them.
+        /// </summary>
         public bool CaptureRequestBody { get; set; } = true;
 
-        /// <summary>Captures response bodies (text content types only). Defaults to <see langword="true"/>.</summary>
+        /// <summary>
+        /// Captures response bodies (text content types only). Defaults to <see langword="true"/>. When
+        /// <see langword="false"/>, the body is never in the log, not even of failed requests: see
+        /// <see cref="LogResponseBodyOnSuccess"/> to keep it only for them.
+        /// </summary>
         public bool CaptureResponseBody { get; set; } = true;
+
+        /// <summary>
+        /// Whether requests that succeeded keep their request body in the entry. <see langword="null"/> (the default) or
+        /// <see langword="true"/>: yes. <see langword="false"/>: the entry is still written, but only failed requests
+        /// (<see cref="KeepBodiesWhen"/>) keep the body, so problems can still be diagnosed.
+        /// </summary>
+        /// <remarks>
+        /// The outcome is known only after the response, so the capture still runs, up to <see cref="MaxBodyBytes"/>, and
+        /// is discarded at the end. An endpoint can override this with <see cref="HttpLogBodiesAttribute"/> or
+        /// <c>WithHttpLogBodies</c>. Only <see cref="CaptureRequestBody"/> avoids the capture altogether.
+        /// </remarks>
+        public bool? LogRequestBodyOnSuccess { get; set; }
+
+        /// <summary>
+        /// Whether requests that succeeded keep their response body in the entry. <see langword="null"/> (the default) or
+        /// <see langword="true"/>: yes. <see langword="false"/>: the entry is still written, but only failed requests
+        /// (<see cref="KeepBodiesWhen"/>) keep the body, so problems can still be diagnosed.
+        /// </summary>
+        /// <remarks>
+        /// The outcome is known only after the response, so the capture still runs, up to <see cref="MaxBodyBytes"/>, and
+        /// is discarded at the end. An endpoint can override this with <see cref="HttpLogBodiesAttribute"/> or
+        /// <c>WithHttpLogBodies</c>. Only <see cref="CaptureResponseBody"/> avoids the capture altogether.
+        /// </remarks>
+        public bool? LogResponseBodyOnSuccess { get; set; }
+
+        /// <summary>
+        /// Decides which requests keep the bodies that <see cref="LogRequestBodyOnSuccess"/> and
+        /// <see cref="LogResponseBodyOnSuccess"/> would drop. It receives the entry, still without the bodies, and replaces
+        /// the default: status code 400 or above, or an exception.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// o.KeepBodiesWhen = (context, entry) => entry.StatusCode >= 500 || entry.Duration > TimeSpan.FromSeconds(5);
+        /// </code>
+        /// </example>
+        public Func<HttpContext, HttpLogEntry, bool>? KeepBodiesWhen { get; set; }
 
         /// <summary>Captures request headers. Defaults to <see langword="true"/>.</summary>
         public bool CaptureRequestHeaders { get; set; } = true;

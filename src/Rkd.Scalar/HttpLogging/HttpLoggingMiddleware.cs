@@ -138,6 +138,12 @@ namespace Rkd.Scalar.HttpLogging
                 {
                     LogCaptureFailed(_logger, exception, context.Request.Path);
                 }
+                finally
+                {
+                    // What did not go into the entry goes back to the pool.
+                    requestCapture?.Capture.Release();
+                    responseCapture?.Capture.Release();
+                }
             }
         }
 
@@ -205,20 +211,28 @@ namespace Rkd.Scalar.HttpLogging
                     entry.RequestHeaders[name] = RedactHeader(name, value.ToString());
             }
 
+            // Only now the outcome is known: the entry goes to the decision still without the bodies.
+            var bodies = context.GetEndpoint()?.Metadata.GetMetadata<IHttpLogBodiesMetadata>();
+            var requestOnSuccess = bodies?.LogRequestBodyOnSuccess ?? _options.LogRequestBodyOnSuccess ?? true;
+            var responseOnSuccess = bodies?.LogResponseBodyOnSuccess ?? _options.LogResponseBodyOnSuccess ?? true;
+            var keepOnFailure = (!requestOnSuccess || !responseOnSuccess) && KeepBodies(context, entry);
+            var keepRequest = requestOnSuccess || keepOnFailure;
+            var keepResponse = responseOnSuccess || keepOnFailure;
+
             if (sensitive)
             {
-                entry.RequestBody = _options.CaptureRequestBody && IsText(request.ContentType) ? Redacted : null;
-                entry.ResponseBody = _options.CaptureResponseBody && IsText(response.ContentType) ? Redacted : null;
+                entry.RequestBody = keepRequest && _options.CaptureRequestBody && IsText(request.ContentType) ? Redacted : null;
+                entry.ResponseBody = keepResponse && _options.CaptureResponseBody && IsText(response.ContentType) ? Redacted : null;
             }
             else
             {
-                if (requestCapture is not null)
+                if (keepRequest && requestCapture is not null)
                 {
                     entry.RequestBody = requestCapture.Capture.GetTextAndRelease();
                     entry.RequestBodyTruncated = requestCapture.Capture.Truncated;
                 }
 
-                if (responseCapture is { Captured: true })
+                if (keepResponse && responseCapture is { Captured: true })
                 {
                     entry.ResponseBody = responseCapture.Capture.GetTextAndRelease();
                     entry.ResponseBodyTruncated = responseCapture.Capture.Truncated;
@@ -229,6 +243,11 @@ namespace Rkd.Scalar.HttpLogging
 
             return entry;
         }
+
+        private bool KeepBodies(HttpContext context, HttpLogEntry entry) =>
+            _options.KeepBodiesWhen is { } keepBodiesWhen
+                ? keepBodiesWhen(context, entry)
+                : !entry.IsSuccess || entry.Exception is not null;
 
         private bool IsExcluded(PathString path)
         {

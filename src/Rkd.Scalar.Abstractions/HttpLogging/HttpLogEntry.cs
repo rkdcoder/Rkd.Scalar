@@ -97,7 +97,8 @@ namespace Rkd.Scalar
 
         /// <summary>
         /// Request body read by the application (text content types only, up to <c>RkdHttpLoggingOptions.MaxBodyBytes</c>);
-        /// <c>[REDACTED]</c> on sensitive paths.
+        /// <c>[REDACTED]</c> on sensitive paths; <see langword="null"/> on a request that succeeded when
+        /// <c>RkdHttpLoggingOptions.LogRequestBodyOnSuccess</c> is <see langword="false"/>.
         /// </summary>
         public string? RequestBody { get; set; }
 
@@ -112,7 +113,8 @@ namespace Rkd.Scalar
 
         /// <summary>
         /// Response body (text content types only, up to <c>RkdHttpLoggingOptions.MaxBodyBytes</c>);
-        /// <c>[REDACTED]</c> on sensitive paths.
+        /// <c>[REDACTED]</c> on sensitive paths; <see langword="null"/> on a request that succeeded when
+        /// <c>RkdHttpLoggingOptions.LogResponseBodyOnSuccess</c> is <see langword="false"/>.
         /// </summary>
         public string? ResponseBody { get; set; }
 

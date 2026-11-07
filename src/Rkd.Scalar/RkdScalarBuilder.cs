@@ -254,6 +254,15 @@ namespace Rkd.Scalar
             {
                 section.Bind(options);
 
+                // A JSON null reaches a plain bool as false, which would turn these off silently: null keeps the default.
+                bool OnUnlessSet(string key) => section.GetValue<bool?>(key) ?? true;
+
+                options.Enabled = OnUnlessSet(nameof(RkdHttpLoggingOptions.Enabled));
+                options.CaptureRequestBody = OnUnlessSet(nameof(RkdHttpLoggingOptions.CaptureRequestBody));
+                options.CaptureResponseBody = OnUnlessSet(nameof(RkdHttpLoggingOptions.CaptureResponseBody));
+                options.CaptureRequestHeaders = OnUnlessSet(nameof(RkdHttpLoggingOptions.CaptureRequestHeaders));
+                options.ExcludeDocumentation = OnUnlessSet(nameof(RkdHttpLoggingOptions.ExcludeDocumentation));
+
                 // Claim lists replace the defaults (the binder would append to them).
                 if (section.GetSection(nameof(RkdHttpLoggingOptions.UserNameClaimTypes)).Get<string[]>() is { } userNames)
                     options.UserNameClaimTypes = userNames;

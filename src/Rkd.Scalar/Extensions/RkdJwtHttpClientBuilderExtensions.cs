@@ -57,6 +57,9 @@ namespace Microsoft.Extensions.DependencyInjection
             if (options.RefreshBeforeExpiration < TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(configure), "RefreshBeforeExpiration cannot be negative.");
 
+            if (options.Lifetime < TimeSpan.FromSeconds(1))
+                throw new ArgumentOutOfRangeException(nameof(configure), "Lifetime must be at least one second.");
+
             builder.Services.TryAddSingleton<RkdJwtTokenCache>();
 
             if (options.ForwardIncomingToken)

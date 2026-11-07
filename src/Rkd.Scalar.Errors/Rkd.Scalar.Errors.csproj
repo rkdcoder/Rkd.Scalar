@@ -7,7 +7,7 @@
     <RootNamespace>Rkd.Scalar</RootNamespace>
 
     <PackageId>Rkd.Scalar.Errors</PackageId>
-    <Version>2.10.0</Version>
+    <Version>2.11.0</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
@@ -32,8 +32,9 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <!-- First release: no baseline yet. Set PackageValidationBaselineVersion to 2.10.0 after it is published. -->
+    <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>2.10.0</PackageValidationBaselineVersion>
 
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

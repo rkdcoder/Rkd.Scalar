@@ -67,6 +67,16 @@ namespace Rkd.Scalar.HttpLogging
 
             return text;
         }
+
+        /// <summary>Discards what was captured. Safe to call more than once and after <see cref="GetTextAndRelease"/>.</summary>
+        public void Release()
+        {
+            if (_buffer is null)
+                return;
+
+            ArrayPool<byte>.Shared.Return(_buffer);
+            _buffer = null;
+        }
     }
 
     /// <summary>Request body wrapper: captures what the application reads.</summary>

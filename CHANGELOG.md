@@ -4,6 +4,37 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.11.0
+
+### Added
+
+- **Validity per token**: `IJwtTokenService.CreateTokenAsync(identity, DateTimeOffset expiresAt, ...)` and
+  `CreateTokenAsync(identity, TimeSpan lifetime, ...)` issue a token that expires when asked, instead of
+  `ExpirationInMinutes`, with every way of signing. Calls without a validity are not affected. They are default
+  interface methods: a custom `IJwtTokenService` keeps compiling and working, and throws `NotSupportedException` on
+  these calls until it overrides the method with the instant.
+- `RkdJwtTokenOptions.Lifetime`: validity of the service tokens of `AddRkdJwtToken`, per client.
+- **HTTP log, bodies only of failed requests**: `RkdHttpLoggingOptions.LogRequestBodyOnSuccess` and
+  `LogResponseBodyOnSuccess` (`bool?`). `null` (the default) or `true`: as before. `false`: the entry of a request that
+  succeeded is written without that body, and failed requests keep it.
+- `RkdHttpLoggingOptions.KeepBodiesWhen`: replaces what counts as a failure for those options (default: status code 400
+  or above, or an exception).
+- `[HttpLogBodies]`, `.WithHttpLogBodies(...)` and `IHttpLogBodiesMetadata`: the same choice per controller, action,
+  minimal API endpoint or group, overriding the options in both directions.
+
+### Fixed
+
+- A JSON `null` in `Enabled`, `CaptureRequestBody`, `CaptureResponseBody`, `CaptureRequestHeaders` or
+  `ExcludeDocumentation` of the `HttpLogging` section turned the option off, because the configuration binder of .NET 10
+  writes `false` to a plain `bool`. It now keeps the default, like leaving the key out.
+- Captured bodies that did not go into an entry (dropped by `Filter`, or discarded on sensitive endpoints) go back to
+  the buffer pool.
+
+### Changed
+
+- All packages published as 2.11.0. Package validation compares every package with 2.10.0, including
+  Rkd.Scalar.Abstractions and Rkd.Scalar.Errors, which had no baseline in their first release.
+
 ## 2.10.0
 
 ### Added
