@@ -6,7 +6,8 @@ namespace Rkd.Scalar.Modules
 {
     /// <summary>
     /// Applies the route template of <see cref="ApiModuleAttribute"/> controllers when the application model is built,
-    /// using the global template or the versioning-aware default.
+    /// using the global template or the versioning-aware default. <see cref="ApiModuleApplicationModelProvider"/> applies it
+    /// first, as soon as the controller models exist; this convention applies it again at the end, with the same result.
     /// </summary>
     internal sealed class ApiModuleConvention : IControllerModelConvention
     {

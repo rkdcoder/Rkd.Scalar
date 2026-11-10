@@ -4,6 +4,47 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.12.0
+
+### Added
+
+- **Invalid routes stop the startup, explained**: an attribute route whose combined template is invalid (typically an
+  action parameter `{version}` under the `api/v{version:apiVersion}` prefix of `[ApiModule]`, which repeats the
+  parameter name) now stops the application at startup with an `InvalidOperationException` that names the action, the
+  template and the fix (e.g. rename it to `{packageVersion}`). ASP.NET Core rejects such a template inside
+  `MapControllers`, while building the pipeline or only on the first request (the application starts and every endpoint
+  answers 500), and on IIS a startup failure also becomes a 500 on every request, always without naming the action. The
+  check runs whatever `RkdScalar:Enabled` says and only parses what ASP.NET Core would parse anyway: applications whose
+  routes are valid are not affected.
+- `RkdScalarBuilder.WithRouteValidation(bool enabled = true)`: `false` turns the check off and keeps ASP.NET Core's own
+  exceptions.
+
+### Fixed
+
+- **`[ApiModule]` parameters bound from the wrong place outside the default versioned route.** ASP.NET Core infers
+  whether a simple parameter of an API controller comes from the route or from the query string by reading the routes
+  while it builds the controllers, and until now it saw the default versioned template there
+  (`api/v{version:apiVersion}/[module]/[controller]`): the effective one (the template without version, when
+  `WithVersioning` is not used, or the global template of `WithApiModules`) was only applied at the end. So, without
+  `WithVersioning`, an action route `{version}` stopped the startup ("The route parameter name 'version' appears more
+  than one time") and a `version` parameter was taken from the route, where it does not exist (always empty), instead of
+  the query string; and a parameter of the global template (e.g. `{tenant}` in `"api/{tenant}/[module]/[controller]"`)
+  was taken from the query string instead of the route. The effective template is now applied as soon as the controllers
+  are created, so these parameters come from where the final route says, also in the OpenAPI document. Applications with
+  `WithVersioning` and the default template, and controllers with their own `RouteTemplate`, are not affected; parameters
+  with `[FromRoute]`/`[FromQuery]` neither.
+- **Endpoints under the paths of the documentation were never reported.** The check of endpoints under `/scalar` and
+  `/openapi` ran inside `UseRkdScalar`, before the endpoints of a `WebApplication` are registered, so it never saw any
+  (and it compared the display name, which for controllers does not contain the route). It now runs when the pipeline
+  is built, compares the route of each endpoint with the paths the documentation actually uses (`ScalarRoutePrefix` and
+  the fixed start of `OpenApiRoutePattern`) segment by segment (`/scalars` is not under `/scalar`), ignores the
+  documentation's own endpoints and logs a warning naming the endpoint. It does not stop the application: those
+  endpoints have always worked.
+
+### Changed
+
+- All packages published as 2.12.0. Package validation compares every package with 2.11.0.
+
 ## 2.11.0
 
 ### Added

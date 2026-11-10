@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Rkd.Scalar;
 using Rkd.Scalar.Infrastructure;
 using Rkd.Scalar.Modules;
@@ -43,8 +46,15 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.AddDocumentTransformer<FormFileSchemaTransformer>();
             });
 
-            // Routes of [ApiModule] controllers (global template / versioning-aware default).
+            // Routes of [ApiModule] controllers (global template / versioning-aware default): applied as soon as the
+            // controller models exist, so the binding inference of ASP.NET Core sees them, and again by the convention.
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IApplicationModelProvider, ApiModuleApplicationModelProvider>());
             services.Configure<MvcOptions>(options => options.Conventions.Add(new ApiModuleConvention(registry)));
+
+            // Invalid attribute routes stop the application at startup, explained, instead of a 500 on every endpoint
+            // (WithRouteValidation): while the controllers are built and, for the rest, once the pipeline is built.
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IApplicationModelProvider, RouteValidationApplicationModelProvider>());
+            services.AddTransient<IStartupFilter, RouteValidationStartupFilter>();
 
             return new RkdScalarBuilder(services, configuration, registry);
         }
