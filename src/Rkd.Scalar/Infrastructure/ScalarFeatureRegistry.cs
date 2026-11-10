@@ -23,6 +23,18 @@ namespace Rkd.Scalar.Infrastructure
         public bool XmlComments { get; set; } = true;
 
         /// <summary>
+        /// When <see langword="true"/> (default), the endpoints are built once at startup and an invalid attribute route
+        /// stops the application with an explanation (<see cref="RouteTemplateValidation"/>).
+        /// </summary>
+        public bool RouteValidation { get; set; } = true;
+
+        /// <summary>
+        /// Paths where <c>UseRkdScalar</c> mapped the documentation (Scalar prefix, start of the OpenAPI pattern); empty
+        /// when it mapped nothing. Endpoints of the application under them are reported at startup.
+        /// </summary>
+        public HashSet<string> DocumentationPaths { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
         /// Global options of <see cref="ApiModuleAttribute"/> controllers.
         /// </summary>
         public ApiModuleOptions ApiModules { get; } = new();

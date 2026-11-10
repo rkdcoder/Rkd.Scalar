@@ -178,6 +178,11 @@ The documentation endpoints allow anonymous access, so an application that prote
 `FallbackPolicy` (`RequireAuthenticatedUser()`) keeps its documentation reachable: who sees it is decided by
 `Enabled` and `WithUiProtection`, not by the API authorization.
 
+Keep your own endpoints out of the documentation paths (`/scalar`, `/openapi`, or the ones configured above): requests
+there may reach the documentation instead of the endpoint, or the other way round. An endpoint under them is reported
+at startup as a warning (category `Rkd.Scalar.Routing`) with its name and route; `/scalars` or `/api/scalar` are not
+under `/scalar`.
+
 Turning the documentation off in production is just configuration:
 
 ```json
@@ -901,7 +906,8 @@ public class PaymentsController : ControllerBase { ... }
 | Global: `.WithApiModules(o => o.RouteTemplate = "...")`          | `"v{version:apiVersion}/[module]/[controller]"`  |
 | Per controller: `[ApiModule("x", RouteTemplate = "...")]`        | `"internal/[module]/[controller]"`               |
 
-The template must contain `[module]`; `[controller]` and route parameters work as usual. Other options:
+The template must contain `[module]`; `[controller]` and route parameters work as usual (a parameter of the global
+template, such as `{tenant}` in `"api/{tenant}/[module]/[controller]"`, binds from the route). Other options:
 `Tag` (display name in Scalar, e.g. `[ApiModule("billing", Tag = "Billing & Payments")]`), `Order` and `Name`.
 Module names may have several segments (`"finance/reports"`) and route parameters:
 
@@ -916,6 +922,21 @@ public class AttributesController : ControllerBase
 
 Parameters (`{toolId}`, `{toolId:int}`) are left out of the default tag; optional and catch-all parameters are
 not allowed. Don't combine it with a class-level `[Route]`.
+
+**Don't name an action parameter `{version}` under a versioned template**: the prefix already has
+`{version:apiVersion}`, and a parameter name repeated in the combined route is invalid. ASP.NET Core rejects it inside
+`MapControllers`, while building the pipeline or only on the first request (then every endpoint answers 500), without
+naming the action. Rkd.Scalar checks the routes at startup and stops the application with the explanation instead:
+
+```text
+Rkd.Scalar: 1 route template is invalid. ...
+ - MyApi.PackagesController.Get (MyApi): 'api/v{version:apiVersion}/packages/[controller]/{id}/{version}'
+   The route parameter name 'version' appears more than one time in the route template.
+   '{version}' is already the API version segment ('{version:apiVersion}', from [ApiModule] / WithApiModules or the
+   controller route): give the action's parameter another name, e.g. '{packageVersion}'.
+```
+
+Valid routes are not affected; `.WithRouteValidation(false)` turns the check off.
 
 ## Version selector
 

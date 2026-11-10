@@ -65,7 +65,8 @@ namespace Microsoft.AspNetCore.Builder
 
             // The documentation is governed by "Enabled" and WithUiProtection, never by the API authorization:
             // a FallbackPolicy requiring authenticated users must not hide it.
-            app.MapOpenApi(options.OpenApiRoutePattern).AllowAnonymous();
+            app.MapOpenApi(options.OpenApiRoutePattern).AllowAnonymous()
+                .WithMetadata(ReservedRouteGuard.DocumentationEndpoint.Instance);
 
             if (options.VersionSelector)
             {
@@ -75,7 +76,8 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     ApplyScalarOptions(scalar, options);
                     ScalarDocumentSelector.AddDocuments(scalar, context);
-                }).AllowAnonymous();
+                }).AllowAnonymous()
+                    .WithMetadata(ReservedRouteGuard.DocumentationEndpoint.Instance);
             }
             else
             {
@@ -93,10 +95,13 @@ namespace Microsoft.AspNetCore.Builder
 
                     foreach (var description in provider.ApiVersionDescriptions)
                         scalar.AddDocument(description.GroupName);
-                }).AllowAnonymous();
+                }).AllowAnonymous()
+                    .WithMetadata(ReservedRouteGuard.DocumentationEndpoint.Instance);
             }
 
-            ReservedRouteGuard.EnsureControllersDoNotUseReservedRoutes(app);
+            // Endpoints of the application under these paths are reported when the pipeline is built
+            // (RouteValidationStartupFilter): here, the endpoints of a WebApplication are not registered yet.
+            registry.DocumentationPaths.UnionWith(ReservedRouteGuard.DocumentationPaths(options));
 
             return app;
         }

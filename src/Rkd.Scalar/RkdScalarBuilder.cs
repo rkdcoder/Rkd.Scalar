@@ -704,6 +704,22 @@ namespace Rkd.Scalar
         }
 
         /// <summary>
+        /// Enables or disables the explanation of invalid attribute routes (enabled by default). An invalid template (e.g. an
+        /// action parameter <c>{version}</c> under the <c>api/v{version:apiVersion}</c> prefix of <see cref="ApiModuleAttribute"/>)
+        /// makes ASP.NET Core fail inside <c>MapControllers</c>, while building the pipeline or only on the first request
+        /// (500 on every endpoint), always without naming the action. With the check, the application stops at startup
+        /// and the exception names the action, the template and the fix. Applications whose routes are valid are not affected.
+        /// </summary>
+        /// <param name="enabled"><see langword="false"/> to turn the check off.</param>
+        /// <returns>The current <see cref="RkdScalarBuilder"/> instance.</returns>
+        public RkdScalarBuilder WithRouteValidation(bool enabled = true)
+        {
+            _registry.RouteValidation = enabled;
+
+            return this;
+        }
+
+        /// <summary>
         /// Customizes every OpenAPI document (all versions), e.g. to add your own transformers.
         /// </summary>
         /// <param name="configure">Configures <see cref="OpenApiOptions"/>.</param>
