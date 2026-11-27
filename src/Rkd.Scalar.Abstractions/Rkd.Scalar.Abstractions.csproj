@@ -7,13 +7,13 @@
     <RootNamespace>Rkd.Scalar</RootNamespace>
 
     <PackageId>Rkd.Scalar.Abstractions</PackageId>
-    <Version>2.12.0</Version>
+    <Version>2.12.1</Version>
     <Authors>Rodrigo Kmiecik</Authors>
     <Company>rkd.com.br</Company>
     <Product>Rkd.Scalar</Product>
     <Title>Rkd.Scalar abstractions</Title>
 
-    <Description>Contracts of Rkd.Scalar for the layers that implement them without ASP.NET Core (Infrastructure, Application): ICredentialValidator, CredentialValidationResult, IJwtTokenService, IJwtSigner, IJwtSigningKeyResolver, RkdPem, IHttpLogSink and HttpLogEntry. The same types used by Rkd.Scalar, so the API project registers what the other layers implement.</Description>
+    <Description>Contracts of Rkd.Scalar for the layers that implement them without ASP.NET Core (Infrastructure, Application): ICredentialValidator, CredentialValidationResult, IJwtTokenService, IJwtSigner, IJwtSigningKeyResolver, RkdPem, IHttpLogSink and HttpLogEntry (namespace Rkd.Scalar: using Rkd.Scalar;). The same types used by Rkd.Scalar, so the API project registers what the other layers implement.</Description>
 
     <PackageTags>rkd-scalar;abstractions;contracts;authentication;jwt;api-key;basic-auth;http-logging;clean-architecture;ddd</PackageTags>
     <PackageReleaseNotes>See https://github.com/rkdcoder/Rkd.Scalar/blob/master/CHANGELOG.md</PackageReleaseNotes>
@@ -34,7 +34,7 @@
 
     <!-- Fails the pack if the public API breaks compared with the last published version. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>2.11.0</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>2.12.0</PackageValidationBaselineVersion>
 
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
