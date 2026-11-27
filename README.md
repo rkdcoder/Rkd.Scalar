@@ -78,6 +78,10 @@ MyApp.Api             → Rkd.Scalar                  AddRkdScalar().WithBearerA
 
 - The types and the namespace (`Rkd.Scalar`) are the same in every package, and Rkd.Scalar depends on both
   packages: code, `using`s and registrations do not change.
+- One `using` in every layer, tests included: `using Rkd.Scalar;` (`RkdError`, `ProblemException`,
+  `IProblemLogDetails`, `ICredentialValidator<T>`…). `Rkd.Scalar.Errors` and `Rkd.Scalar.Abstractions` are package
+  names, not namespaces; `using Rkd.Problems;` is only for the client side
+  ([`HttpProblemException`](#reading-errors-in-clients-rkdproblems)), it has no `ProblemException`.
 - `Rkd.Scalar.Abstractions` does not reference ASP.NET Core; its only dependency is `Microsoft.IdentityModel.Tokens`
   (`SecurityKey`). `Rkd.Scalar.Errors` depends on Rkd.Problems and the ASP.NET Core shared framework
   (`ProblemException.ToProblemDetails()`), no other package.
@@ -358,6 +362,8 @@ Throw from anywhere (services, handlers, domain) with `RkdError` — projects ot
 `Rkd.Scalar.Errors` ([Layered solutions](#layered-solutions-clean-architecture--ddd)):
 
 ```csharp
+using Rkd.Scalar;   // RkdError, ProblemException: same namespace in Rkd.Scalar and Rkd.Scalar.Errors
+
 throw RkdError.Conflict("CUSTOMER_ALREADY_EXISTS", "Já existe um cliente com este CPF.");
 throw RkdError.NotFound("CUSTOMER_NOT_FOUND", $"Customer {id} was not found.");
 throw RkdError.UnprocessableEntity("CREDIT_LIMIT_EXCEEDED", "The credit limit was exceeded.");
@@ -481,6 +487,8 @@ dotnet add package Rkd.Problems
 ```
 
 ```csharp
+using Rkd.Problems;   // client side: HttpProblemException, HttpProblem, EnsureSuccessOrThrowProblemAsync
+
 using var response = await http.PostAsJsonAsync("customers", customer, ct);
 await response.EnsureSuccessOrThrowProblemAsync(ct);   // HttpProblemException with Code, Detail, TraceId, Errors…
 ```
@@ -522,6 +530,8 @@ map `HttpProblemException` yourself for another policy.
 ## Throwing problems directly
 
 ```csharp
+using Rkd.Scalar;   // not Rkd.Problems, the client side (HttpProblemException)
+
 throw ProblemException.NotFound($"Order {id} was not found.");
 
 throw new ProblemException(StatusCodes.Status409Conflict, "Duplicated order", $"Order {id} already exists.")
@@ -530,6 +540,13 @@ throw new ProblemException(StatusCodes.Status409Conflict, "Duplicated order", $"
     Code = "DUPLICATED_ORDER",
     Extensions = { ["orderId"] = id }
 };
+```
+
+In tests, the same `using Rkd.Scalar;`:
+
+```csharp
+var problem = await Assert.ThrowsAsync<ProblemException>(() => orders.CreateAsync(command, ct));
+Assert.Equal("DUPLICATED_ORDER", problem.Code);
 ```
 
 ## Log-only details

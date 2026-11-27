@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 The project follows [Semantic Versioning](https://semver.org/): public APIs are never
 removed or changed in a breaking way within a major version (enforced by package validation).
 
+## 2.12.1
+
+### Changed
+
+- **The namespace is explicit in the documentation**: every type of every package (`RkdError`, `ProblemException`,
+  `IProblemLogDetails`, the contracts of Rkd.Scalar.Abstractions) is in `Rkd.Scalar`, which the samples now import.
+  The READMEs and the descriptions of Rkd.Scalar.Errors and Rkd.Scalar.Abstractions say so, and that `Rkd.Problems`
+  (the client side: `HttpProblemException`) has no `ProblemException`: `using Rkd.Problems;` instead of
+  `using Rkd.Scalar;` ends in CS0246 ("ProblemException could not be found"), also in tests. No code change.
+- Dependencies: ASP.NET Core / Extensions 10.0.15, Scalar.AspNetCore 2.21.0, Microsoft.OpenApi 2.13.1,
+  Microsoft.Data.SqlClient 7.1.2, System.Security.Cryptography.Pkcs 10.0.15, Npgsql 10.0.4. Tests:
+  Microsoft.NET.Test.Sdk 18.12.0, xunit.v3 4.0.3, coverlet.collector 10.1.1.
+- `Microsoft.IdentityModel.Tokens` stays on 8.19.2, the version Microsoft.AspNetCore.Authentication.JwtBearer 10.0.15
+  uses for the other `Microsoft.IdentityModel.*` packages: mixing versions of that family fails at run time.
+- Not updated, new major versions: ASP.NET Core 11 (needs `net11.0`), Microsoft.OpenApi 3 (Microsoft.AspNetCore.OpenApi
+  10 requires 2.x), Scalar.AspNetCore 3, Npgsql 11, Microsoft.Data.SqlClient 8.
+- All packages published as 2.12.1. Package validation compares every package with 2.12.0.
+
 ## 2.12.0
 
 ### Added

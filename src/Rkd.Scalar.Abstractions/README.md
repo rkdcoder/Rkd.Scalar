@@ -11,6 +11,8 @@ dotnet add src/MyApp.Api package Rkd.Scalar
 
 ```csharp
 // MyApp.Infrastructure — references Rkd.Scalar.Abstractions only
+using Rkd.Scalar;   // every type of this package (the package name is not a namespace)
+
 public sealed class LoginValidator(AppDbContext db, IPasswordHasher hasher) : ICredentialValidator<LoginRequest>
 {
     public async Task<CredentialValidationResult> ValidateAsync(LoginRequest request, CancellationToken cancellationToken = default)

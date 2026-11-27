@@ -11,6 +11,8 @@ dotnet add src/MyApp.Api package Rkd.Scalar
 
 ```csharp
 // MyApp.Application — references Rkd.Scalar.Errors only
+using Rkd.Scalar;   // RkdError, ProblemException, IProblemLogDetails
+
 public static class CustomerErrors
 {
     public const string AlreadyExists = "CUSTOMER_ALREADY_EXISTS";
@@ -39,6 +41,30 @@ builder.AddRkdScalar().WithProblemDetails();
 | `RkdError` | `Conflict`, `NotFound`, `UnprocessableEntity`, `Validation`… with a stable error code |
 | `ProblemException` | The exception they create; derive from it for your own problems |
 | `IProblemLogDetails` | Technical details of your own exceptions, written to the log only |
+
+## Namespace
+
+Every type is in **`Rkd.Scalar`**, whichever package brings it (this one or Rkd.Scalar):
+
+```csharp
+using Rkd.Scalar;
+```
+
+- Not `Rkd.Scalar.Errors`: that is the name of the package, not a namespace.
+- Not `Rkd.Problems`: that is the dependency with the client side of the contract (`HttpProblemException`,
+  `EnsureSuccessOrThrowProblemAsync`, `ProblemCodes`, `ProblemMembers`), what a failed call to another API throws.
+  It has no `ProblemException`.
+
+The same `using` in tests:
+
+```csharp
+using Rkd.Scalar;
+
+var problem = await Assert.ThrowsAsync<ProblemException>(() => service.CreateAsync(command, ct));
+Assert.Equal(CustomerErrors.AlreadyExists, problem.Code);
+```
+
+## Notes
 
 - Same types and namespace (`Rkd.Scalar`) used by Rkd.Scalar, which depends on this package.
 - Dependencies: [Rkd.Problems](https://www.nuget.org/packages/Rkd.Problems) (the member names and codes shared with
